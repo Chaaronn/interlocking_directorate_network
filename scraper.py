@@ -1,7 +1,6 @@
 import requests, re
 from datetime import datetime
 
-
 api_key = 'ecd64772-ee19-4ff2-a5ed-bc7142a59aed'
 ch_base_url = 'https://api.company-information.service.gov.uk/'
 
@@ -31,6 +30,71 @@ def search_ch(name):
     else:
         print(f"Call {params['q']} failed to {url} with code {r.status_code} and headers {r.headers}")
         return
+
+def adv_search_ch(name_includes, name_excludes, company_status, sic_codes):
+    """
+    Advanced searches for a company on the Companies House API using the provided company details.
+
+    Args:
+        name_includes (str): Items within the company name (e.g., Knight, R&D etc.) Should normally be the full company name
+        name_excludes (str): Items within the company name to exclude formsearch. Helpful when two companies have similar names.
+        company_status (list): The company status advanced search filter. To search using multiple values, use a comma delimited list or multiple of the same key i.e. company_status=xxx&company_status=yyy
+        sic_codes (list): The SIC codes advanced search filter. To search using multiple values, use a comma delimited list or multiple of the same key i.e. sic_codes=xxx&sic_codes=yyy 
+
+    Returns:
+        dict: A dictionary containing the search results if the request is successful.
+        If the request fails, it returns None and prints an error message.
+    """
+
+    # Validate input types
+    if not isinstance(name_includes, str) or not isinstance(name_excludes, str):
+        raise ValueError("name_includes and name_excludes must be strings.")
+    
+    if not isinstance(company_status, (list, str)):
+        raise ValueError("company_status must be a list or a comma-separated string.")
+    
+    if not isinstance(sic_codes, (list, str)):
+        raise ValueError("sic_codes must be a list or a comma-separated string.")
+
+    # Validate input lengths
+    if len(name_includes) == 0 or len(name_excludes) == 0:
+        raise ValueError("name_includes and name_excludes cannot be empty.")
+    
+    # Convert single string inputs to lists for consistency
+    if isinstance(company_status, str):
+        company_status = [company_status]
+    if isinstance(sic_codes, str):
+        sic_codes = [sic_codes]
+
+    # Define acceptable values for validation
+    valid_company_status = ["active", "dissolved", "liquidation"]  # Example values; update as needed
+
+    # Validate company status values
+    for status in company_status:
+        if status not in valid_company_status:
+            raise ValueError(f"Invalid company status: {status}. Valid options are: {valid_company_status}.")
+
+
+    headers = {"Authorization": f"Basic {api_key}"}
+
+    params = {
+        "company_name_includes": name_includes,
+        "company_name_excludes": name_excludes,
+        "company_status": ",".join(company_status),  # Convert list to comma-separated string
+        "sic_codes": ",".join(sic_codes)  # Convert list to comma-separated string
+    }
+
+    url = ch_base_url + "advanced-search/companies"
+
+    r = session.get(url, headers=headers, params=params)
+    if r.status_code == 200:
+        return r.json()
+    else:
+        print(f"Call {params['q']} failed to {url} with code {r.status_code} and headers {r.headers}")
+        return
+
+
+
 
 def get_persons_with_control_info(company_link):
 

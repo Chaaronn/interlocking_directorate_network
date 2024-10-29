@@ -31,11 +31,19 @@ def create_interlock_network(entity_data, start, end, company_name):
                     top_company_node = company_node
 
                 if company_node not in visited_nodes:
-                    G.add_node(company_node, bipartite=0, label=data['company_name'], type='company')
+                    G.add_node(company_node, 
+                               bipartite=0, 
+                               label=data['company_name'], 
+                               type='company', 
+                               link=data.get('link', ''))  # Add link here
                     visited_nodes.add(company_node)
                 
                 if entity_node not in visited_nodes:
-                    G.add_node(entity_node, bipartite=1, label=data['name'], type='entity')
+                    G.add_node(entity_node, 
+                               bipartite=1, 
+                               label=data['name'], 
+                               type='entity', 
+                               link=data.get('link', ''))  # Add link here
                     visited_nodes.add(entity_node)
 
                 G.add_edge(company_node, entity_node, nature_of_control=data['nature_of_control'])
@@ -57,7 +65,7 @@ def create_cytoscape_elements(graph, search_company):
     search_company_normalised = normalise_company_name(search_company)
     for node in graph.nodes():
         node_data = {
-            'data': {'id': node, 'label': graph.nodes[node].get('label', node)}
+            'data': {'id': node, 'label': graph.nodes[node].get('label', node), 'link': graph.nodes[node].get('link', '')}
         }
         node_classes = ['company' if graph.nodes[node].get('type') == 'company' else 'entity']
         node_label_normalised = normalise_company_name(graph.nodes[node].get('label', node))
@@ -77,6 +85,22 @@ def create_cytoscape_elements(graph, search_company):
     
     return elements
 
+# opening links
+@app.callback(
+    Output('dummy-output', 'children'),  # Dummy output to avoid errors
+    [Input('cytoscape-network', 'tapNodeData')]
+)
+def open_link(node_data):
+    if node_data:
+        link = node_data.get('link')  # Get link from the clicked node
+        if link:
+            import webbrowser
+            webbrowser.open(link)  # Open the correct link
+    return ""
+
+
+
+# display nature of control info, needs a re to display properly instead of list
 @app.callback(
     Output('control-info', 'children'),
     [Input('cytoscape-network', 'tapEdgeData')]
@@ -109,7 +133,8 @@ app.layout = html.Div([
             {'selector': '.highlighted', 'style': {'background-color': '#FFD700', 'line-color': '#FFD700', 'width': 3}}
         ]
     ),
-    html.Div(id='control-info')
+    html.Div(id='control-info'),
+    html.Div(id='dummy-output', style={'display': 'none'}),  # Add this line
 ])
 
 
