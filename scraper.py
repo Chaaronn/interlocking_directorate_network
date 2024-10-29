@@ -1,7 +1,8 @@
-import requests, re
+import requests, re, os
 from datetime import datetime
 
-api_key = 'ecd64772-ee19-4ff2-a5ed-bc7142a59aed'
+
+api_key = os.getenv('API_KEY')
 ch_base_url = 'https://api.company-information.service.gov.uk/'
 
 session = requests.Session()
@@ -92,9 +93,6 @@ def adv_search_ch(name_includes, name_excludes, company_status, sic_codes):
     else:
         print(f"Call {params['q']} failed to {url} with code {r.status_code} and headers {r.headers}")
         return
-
-
-
 
 def get_persons_with_control_info(company_link):
 
