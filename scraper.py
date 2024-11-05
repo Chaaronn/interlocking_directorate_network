@@ -120,6 +120,9 @@ def get_active_sig_persons_from_name(company_name):
 
     persons_sig = get_persons_with_control_info(company_link)
 
+    if persons_sig == None:
+        return []
+    
     active_count =  persons_sig['active_count']
 
     active_sig_persons = []
@@ -128,8 +131,6 @@ def get_active_sig_persons_from_name(company_name):
         active_sig_persons.append(persons_sig['items'][i])
 
     return active_sig_persons
-
-    #persons_names = persons_sig['items'][0]['name']
 
 def get_entity_information(self_link):
     '''
@@ -152,9 +153,7 @@ def constuct_ch_link(company_number):
     return new_url
 
 
-def recusive_get_company_tree_from_sigs(company_name, start, end):
-    start = int(start)
-    end = int(end)
+def recusive_get_company_tree_from_sigs(company_name):
 
     search_result = search_ch(company_name)
     if not search_result:
@@ -172,15 +171,12 @@ def recusive_get_company_tree_from_sigs(company_name, start, end):
     visited_entities = set()
 
     def traverse_entities(entities, company_number, company_name):
+        
+        # for each in significant control
         for entity in entities:
             
-            try:
-                start_date, end_date = datetime.strptime(entity['notified_on'], '%Y-%m-%d'), datetime.strptime(entity['ceased_on'], '%Y-%m-%d')
-            except:
-                start_date = datetime.strptime(entity['notified_on'], '%Y-%m-%d')
-                end_date = datetime.now()
-
-            if start_date.year <= end and end_date.year >= start:
+            # Changed to using ceaased to determine if it should be added
+            if not entity['ceased']:
                 
                 entity_info = get_entity_information(entity['links']['self'])
 
@@ -192,10 +188,10 @@ def recusive_get_company_tree_from_sigs(company_name, start, end):
                         'company_name': company_name,
                         'etag': entity['etag'],
                         'name': entity['name'],
-                        'start_date': start_date,
-                        'end_date': end_date,
                         'nature_of_control': entity['natures_of_control'],
-                        'link': constuct_ch_link(company_number)
+                        'link': constuct_ch_link(company_number),
+                        'kind': entity['kind'],
+                        'notified_on' : entity['notified_on']
                     })
 
                     other_sig_control_list = get_active_sig_persons_from_name(entity['name'])

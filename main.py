@@ -6,6 +6,7 @@ import networkx as nx
 from datetime import datetime
 import scraper
 import re
+import webbrowser
 
 app = dash.Dash(__name__)
 app.title = "Interlocking Directorates Network"
@@ -15,15 +16,14 @@ def normalise_company_name(name):
     return re.sub(r'[^a-zA-Z0-9]', '', name).lower()
 
 # recursive func test
-def create_interlock_network(entity_data, start, end, company_name):
+def create_interlock_network(entity_data, company_name):
     G = nx.Graph()
     top_company_node = None
     last_entity_node = None
     visited_nodes = set()
 
     for data in entity_data:
-        if isinstance(data, dict) and 'start_date' in data:
-            if data['start_date'].year <= end and data['end_date'].year >= start:
+        if isinstance(data, dict):
                 company_node = f"company_{data['company_id']}"
                 entity_node = f"entity_{data['etag']}"
 
@@ -86,6 +86,7 @@ def create_cytoscape_elements(graph, search_company):
     return elements
 
 # opening links
+# needs to change from opening a new browser
 @app.callback(
     Output('dummy-output', 'children'),  # Dummy output to avoid errors
     [Input('cytoscape-network', 'tapNodeData')]
@@ -94,7 +95,7 @@ def open_link(node_data):
     if node_data:
         link = node_data.get('link')  # Get link from the clicked node
         if link:
-            import webbrowser
+            
             webbrowser.open(link)  # Open the correct link
     return ""
 
@@ -115,8 +116,6 @@ app.layout = html.Div([
     html.H1("Interlocking Directorates Network"),
     html.Div([
         dcc.Input(id='input-company-name', type='text', placeholder='Enter Company Name'),
-        dcc.Input(id='input-start-year', type='number', placeholder='Start Year', value=1900),
-        dcc.Input(id='input-end-year', type='number', placeholder='End Year', value=datetime.now().year),
         html.Button(id='submit-button', n_clicks=0, children='Submit'),
     ]),
     cyto.Cytoscape(
@@ -141,14 +140,12 @@ app.layout = html.Div([
 @app.callback(
     Output('cytoscape-network', 'elements'),
     [Input('submit-button', 'n_clicks')],
-    [State('input-company-name', 'value'),
-     State('input-start-year', 'value'),
-     State('input-end-year', 'value')]
+    [State('input-company-name', 'value')]
 )
-def update_network(n_clicks, company_name, start_year, end_year):
+def update_network(n_clicks, company_name):
     if n_clicks > 0 and company_name:
-        directors_data = scraper.recusive_get_company_tree_from_sigs(company_name, start_year, end_year)
-        network = create_interlock_network(directors_data, start_year, end_year, company_name)
+        directors_data = scraper.recusive_get_company_tree_from_sigs(company_name)
+        network = create_interlock_network(directors_data, company_name)
         elements = create_cytoscape_elements(network, company_name)
         return elements
     return []
