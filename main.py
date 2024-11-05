@@ -74,13 +74,17 @@ def create_cytoscape_elements(graph, search_company):
         elements.append(node_data)
     
     for edge in graph.edges(data=True):
-        elements.append({
+        nature_of_control_list = edge[2].get('nature_of_control', [])
+        edge_classes = ' '.join([noc.replace(' ', '-') for noc in nature_of_control_list])
+        edge_data = {
             'data': {
                 'source': edge[0],
                 'target': edge[1],
-                'nature_of_control': edge[2].get('nature_of_control', '')
-            }
-        })
+                'nature_of_control': ', '.join(nature_of_control_list)
+            },
+            'classes': edge_classes
+        }
+        elements.append(edge_data)
     
     return elements
 
@@ -94,10 +98,8 @@ def open_link(node_data):
     if node_data:
         link = node_data.get('link')  # Get link from the clicked node
         if link:
-            
             webbrowser.open(link)  # Open the correct link
     return ""
-
 
 
 # display nature of control info, needs a re to display properly instead of list
@@ -132,7 +134,11 @@ app.layout = html.Div([
                     {'selector': '.entity', 'style': {'background-color': 'green'}},
                     {'selector': '.search-company', 'style': {'background-color': 'blue'}},  # Original company
                     {'selector': 'edge', 'style': {'line-color': '#ccc'}},
-                    {'selector': '.highlighted', 'style': {'background-color': '#FFD700', 'line-color': '#FFD700', 'width': 3}}
+                    {'selector': '.highlighted', 'style': {'background-color': '#FFD700', 'line-color': '#FFD700', 'width': 3}},
+                    {'selector': '.ownership-of-shares', 'style': {'line-color': 'red'}},
+                    {'selector': '.voting-rights', 'style': {'line-color': 'blue'}},
+                    {'selector': '.right-to-appoint-remove-directors', 'style': {'line-color': 'green'}},
+                    # Add other styles for different natures of control here
                 ]
             )
         ]

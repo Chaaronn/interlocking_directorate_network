@@ -152,8 +152,17 @@ def constuct_ch_link(company_number):
     new_url = f"find-and-update.company-information.service.gov.uk/company/{company_number}/"
     return new_url
 
-
 def recusive_get_company_tree_from_sigs(company_name):
+    """ 
+    Recursively fetches the company tree of significant controllers (SIGs) for a given company name. 
+    
+    Args: 
+        company_name (str): The name of the company for which the significant controllers' network is to be retrieved. 
+    
+    Returns: 
+        list: A list of dictionaries, each representing an entity with significant control over the company or its subsidiaries. 
+    """
+    
 
     search_result = search_ch(company_name)
     if not search_result:
