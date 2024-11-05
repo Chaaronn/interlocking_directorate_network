@@ -3,7 +3,6 @@ from dash import html, dcc
 from dash.dependencies import Input, Output, State
 import dash_cytoscape as cyto
 import networkx as nx
-from datetime import datetime
 import scraper
 import re
 import webbrowser
@@ -15,7 +14,7 @@ app.title = "Interlocking Directorates Network"
 def normalise_company_name(name):
     return re.sub(r'[^a-zA-Z0-9]', '', name).lower()
 
-# recursive func test
+
 def create_interlock_network(entity_data, company_name):
     G = nx.Graph()
     top_company_node = None
@@ -118,18 +117,24 @@ app.layout = html.Div([
         dcc.Input(id='input-company-name', type='text', placeholder='Enter Company Name'),
         html.Button(id='submit-button', n_clicks=0, children='Submit'),
     ]),
-    cyto.Cytoscape(
-        id='cytoscape-network',
-        layout={'name': 'cose'},
-        style={'width': '100%', 'height': '800px'},
-        elements=[],
-        stylesheet=[
-            {'selector': 'node', 'style': {'label': 'data(label)', 'color': 'black'}},
-            {'selector': '.company', 'style': {'background-color': 'red'}},
-            {'selector': '.entity', 'style': {'background-color': 'green'}},
-            {'selector': '.search-company', 'style': {'background-color': 'blue'}},  # Original company
-            {'selector': 'edge', 'style': {'line-color': '#ccc'}},
-            {'selector': '.highlighted', 'style': {'background-color': '#FFD700', 'line-color': '#FFD700', 'width': 3}}
+    dcc.Loading(
+        id='loading',
+        type="default",
+        children=[
+            cyto.Cytoscape(
+                id='cytoscape-network',
+                layout={'name': 'cose'},
+                style={'width': '100%', 'height': '800px'},
+                elements=[],
+                stylesheet=[
+                    {'selector': 'node', 'style': {'label': 'data(label)', 'color': 'black'}},
+                    {'selector': '.company', 'style': {'background-color': 'red'}},
+                    {'selector': '.entity', 'style': {'background-color': 'green'}},
+                    {'selector': '.search-company', 'style': {'background-color': 'blue'}},  # Original company
+                    {'selector': 'edge', 'style': {'line-color': '#ccc'}},
+                    {'selector': '.highlighted', 'style': {'background-color': '#FFD700', 'line-color': '#FFD700', 'width': 3}}
+                ]
+            )
         ]
     ),
     html.Div(id='control-info'),
