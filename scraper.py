@@ -177,30 +177,28 @@ def recusive_get_company_tree_from_sigs(company_name):
             
             # Changed to using ceaased to determine if it should be added
             if not entity['ceased']:
-                
-                entity_info = get_entity_information(entity['links']['self'])
+                if entity['kind'] == 'corporate-entity-person-with-significant-control':
+                    if entity['etag'] not in visited_entities:
 
-                if entity['etag'] not in visited_entities:
+                        visited_entities.add(entity['etag'])
+                        entity_data.append({
+                            'company_id': company_number,
+                            'company_name': company_name,
+                            'etag': entity['etag'],
+                            'name': entity['name'],
+                            'nature_of_control': entity['natures_of_control'],
+                            'link': constuct_ch_link(company_number),
+                            'kind': entity['kind'],
+                            'notified_on' : entity['notified_on']
+                        })
 
-                    visited_entities.add(entity['etag'])
-                    entity_data.append({
-                        'company_id': company_number,
-                        'company_name': company_name,
-                        'etag': entity['etag'],
-                        'name': entity['name'],
-                        'nature_of_control': entity['natures_of_control'],
-                        'link': constuct_ch_link(company_number),
-                        'kind': entity['kind'],
-                        'notified_on' : entity['notified_on']
-                    })
+                        other_sig_control_list = get_active_sig_persons_from_name(entity['name'])
 
-                    other_sig_control_list = get_active_sig_persons_from_name(entity['name'])
+                        # Potentially add in some validation on if individual or company here
 
-                    # Potentially add in some validation on if individual or company here
-
-                    if other_sig_control_list:
-                        other_company_info = search_ch(entity['name'])['items'][0]
-                        traverse_entities(other_sig_control_list, other_company_info['company_number'], other_company_info['title'])
+                        if other_sig_control_list:
+                            other_company_info = search_ch(entity['name'])['items'][0]
+                            traverse_entities(other_sig_control_list, other_company_info['company_number'], other_company_info['title'])
     
     traverse_entities(sig_control_list, company_number, company_name)
     

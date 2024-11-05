@@ -1,2 +1,5 @@
 
 .env
+control_outputs.txt
+.pyc
+
