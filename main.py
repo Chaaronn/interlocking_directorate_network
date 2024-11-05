@@ -102,10 +102,9 @@ def open_link(node_data):
     return ""
 
 
-# display nature of control info, needs a re to display properly instead of list
 @app.callback(
     Output('control-info', 'children'),
-    [Input('cytoscape-network', 'tapEdgeData')]
+    Input('cytoscape-network', 'tapEdgeData')
 )
 def display_edge_info(edge_data):
     if edge_data:
@@ -113,12 +112,15 @@ def display_edge_info(edge_data):
     return "Click on an edge to see the nature of control information."
 
 
+
+
 app.layout = html.Div([
     html.H1("Interlocking Directorates Network"),
     html.Div([
         dcc.Input(id='input-company-name', type='text', placeholder='Enter Company Name'),
         html.Button(id='submit-button', n_clicks=0, children='Submit'),
-    ]),
+    ], className="input-container"),
+    html.Div(id='control-info', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px'}),
     dcc.Loading(
         id='loading',
         type="default",
@@ -143,10 +145,8 @@ app.layout = html.Div([
             )
         ]
     ),
-    html.Div(id='control-info'),
     html.Div(id='dummy-output', style={'display': 'none'}),  # Add this line
 ])
-
 
 @app.callback(
     Output('cytoscape-network', 'elements'),
@@ -160,6 +160,8 @@ def update_network(n_clicks, company_name):
         elements = create_cytoscape_elements(network, company_name)
         return elements
     return []
+
+
 
 
 if __name__ == '__main__':
