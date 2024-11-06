@@ -32,7 +32,9 @@ def search_ch(name):
         print(f"Call {params['q']} failed to {url} with code {r.status_code} and headers {r.headers}")
         return
 
-def adv_search_ch(name_includes, name_excludes, company_status, sic_codes):
+def adv_search_ch(name_includes, name_excludes='', company_status='', company_subtype='', company_type='', 
+                  dissolved_from='', dissolved_to='', incorporated_from='', incorporated_to='', location='',
+                    sic_codes=''):
     """
     Advanced searches for a company on the Companies House API using the provided company details.
 
@@ -68,7 +70,22 @@ def adv_search_ch(name_includes, name_excludes, company_status, sic_codes):
         sic_codes = [sic_codes]
 
     # Define acceptable values for validation
-    valid_company_status = ["active", "dissolved", "liquidation"]  # Example values; update as needed
+    valid_company_status = ["active", "dissolved", "liquidation", "open", "closed", "converted-closed",
+                            "receivership", "administration", "insolvency-proceedings", "voluntary-arrangement",
+                            "registered", "removed"]
+    
+    valid_company_types = ["private-unlimited", "ltd", "plc", "old-public-company", "private-limited-guarant-nsc-limited-exemption",
+                           "limited-partnership", "private-limited-guarant-nsc", "converted-or-closed", "private-unlimited-nsc",
+                           "private-limited-shares-section-30-exemption", "protected-cell-company", "assurance-company",
+                           "oversea-company", "eeig", "icvc-securities", "icvc-warrant", "icvc-umbrella",
+                           "registered-society-non-jurisdictional", "industrial-and-provident-society", "northern-ireland",
+                           "northern-ireland-other", "royal-charter", "investment-company-with-variable-capital",
+                           "unregistered-company", "llp", "other", "european-public-limited-liability-company-se",
+                           "uk-establishment", "scottish-partnership", "charitable-incorporated-organisation",
+                           "scottish-charitable-incorporated-organisation", "further-education-or-sixth-form-college-corporation",
+                           "registered-overseas-entity"]
+
+    valid_company_subtypes = ["community-interest-company", "private-fund-limited-partnership"]
 
     # Validate company status values
     for status in company_status:
@@ -91,7 +108,7 @@ def adv_search_ch(name_includes, name_excludes, company_status, sic_codes):
     if r.status_code == 200:
         return r.json()
     else:
-        print(f"Call {params['q']} failed to {url} with code {r.status_code} and headers {r.headers}")
+        print(f"Call {params} failed to {url} with code {r.status_code} and headers {r.headers}")
         return
 
 def get_persons_with_control_info(company_link):
@@ -153,16 +170,15 @@ def constuct_ch_link(company_number):
     return new_url
 
 def recusive_get_company_tree_from_sigs(company_name):
-    """ 
-    Recursively fetches the company tree of significant controllers (SIGs) for a given company name. 
-    
-    Args: 
-        company_name (str): The name of the company for which the significant controllers' network is to be retrieved. 
-    
-    Returns: 
-        list: A list of dictionaries, each representing an entity with significant control over the company or its subsidiaries. 
     """
-    
+    Recursively fetches the company tree of significant controllers (SIGs) for a given company name.
+
+    Args:
+        company_name (str): The name of the company for which the significant controllers' network is to be retrieved.
+
+    Returns:
+        list: A list of dictionaries, each representing an entity with significant control over the company or its subsidiaries.
+    """
 
     search_result = search_ch(company_name)
     if not search_result:
