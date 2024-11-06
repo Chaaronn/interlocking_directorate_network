@@ -15,7 +15,7 @@ def normalise_company_name(name):
     return re.sub(r'[^a-zA-Z0-9]', '', name).lower()
 
 
-def create_interlock_network(entity_data, company_name):
+def create_interlock_network(entity_data):
 
     # Create the graph
     G = nx.Graph()
@@ -33,12 +33,12 @@ def create_interlock_network(entity_data, company_name):
         if isinstance(data, dict):
                 
                 # Seperation of companies and entities
-                company_node = f"company_{data['company_id']}"
-                entity_node = f"entity_{data['etag']}"
+                company_node = data['etag']
+                entity_node = data['etag']
 
                 # If the current is first, it is the top company
                 if top_company_node:
-                    continue
+                    pass
                 else:
                     top_company_node = company_node
 
@@ -50,6 +50,8 @@ def create_interlock_network(entity_data, company_name):
                                type='company', 
                                link=data.get('link', ''))  # Get link. Using get to handle some companies without links
                     visited_nodes.add(company_node)
+
+                    print(f"Added company node {data['name']} with link {data.get('link', '')}")
                 
                 if entity_node not in visited_nodes:
                     G.add_node(entity_node, 
@@ -59,8 +61,7 @@ def create_interlock_network(entity_data, company_name):
                                link=data.get('link', ''))
                     visited_nodes.add(entity_node)
 
-                # Add nature of control to the edges
-                G.add_edge(company_node, entity_node, nature_of_control=data['nature_of_control'])
+                    print(f"Added entity node {data['name']} with link {data.get('link', '')}") 
 
                 # Set the last as the last
                 if last_entity_node:
@@ -204,7 +205,7 @@ def update_network(n_clicks, company_name):
     # Make sure a name has been typed
     if n_clicks > 0 and company_name:
         directors_data = scraper.recusive_get_company_tree_from_sigs(company_name)
-        network = create_interlock_network(directors_data, company_name)
+        network = create_interlock_network(directors_data)
         elements = create_cytoscape_elements(network, company_name)
         return elements
     return []
