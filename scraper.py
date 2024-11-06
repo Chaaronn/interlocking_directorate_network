@@ -231,5 +231,3 @@ def recusive_get_company_tree_from_sigs(company_name):
     traverse_entities(sig_control_list, company_number, company_name)
     
     return entity_data
-
-recusive_get_company_tree_from_sigs("Knight R&D")

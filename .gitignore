@@ -1,5 +1,6 @@
 
 .env
 control_outputs.txt
-.pyc
-
+*.pyc
+*.pyo
+__pycache__/
