@@ -50,8 +50,6 @@ def create_interlock_network(entity_data):
                                type='company', 
                                link=data.get('link', ''))  # Get link. Using get to handle some companies without links
                     visited_nodes.add(company_node)
-
-                    print(f"Added company node {data['name']} with link {data.get('link', '')}")
                 
                 if entity_node not in visited_nodes:
                     G.add_node(entity_node, 
@@ -60,8 +58,6 @@ def create_interlock_network(entity_data):
                                type='entity', 
                                link=data.get('link', ''))
                     visited_nodes.add(entity_node)
-
-                    print(f"Added entity node {data['name']} with link {data.get('link', '')}") 
 
                 # Set the last as the last
                 if last_entity_node:
@@ -204,14 +200,13 @@ app.layout = html.Div([
 def update_network(n_clicks, company_name):
     # Make sure a name has been typed
     if n_clicks > 0 and company_name:
+        print(f"Search value: {company_name}")
         directors_data = scraper.recusive_get_company_tree_from_sigs(company_name)
+        print(f"Data found: {directors_data}")
         network = create_interlock_network(directors_data)
         elements = create_cytoscape_elements(network, company_name)
         return elements
     return []
-
-
-
 
 if __name__ == '__main__':
     app.run_server(debug=True)

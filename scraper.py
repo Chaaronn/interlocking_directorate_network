@@ -139,13 +139,14 @@ def get_active_sig_persons_from_name(company_name):
 
     if persons_sig == None:
         return []
-    
-    active_count =  persons_sig['active_count']
 
     active_sig_persons = []
+    
+    # HERE NEEDS TO BE A CHECK FOR CEASED RATHER THAN USING ACTIVE
 
-    for i in range(0, active_count):
-        active_sig_persons.append(persons_sig['items'][i])
+    for i in range(0, len(persons_sig['items'])):
+        if not persons_sig['items'][i]['ceased']:
+            active_sig_persons.append(persons_sig['items'][i])
 
     return active_sig_persons
 
@@ -182,6 +183,7 @@ def recusive_get_company_tree_from_sigs(company_name):
 
     search_result = search_ch(company_name)
     if not search_result:
+        print(f"No search results found for term {company_name}")
         return []
     
     company_info = search_result['items'][0]
@@ -190,6 +192,7 @@ def recusive_get_company_tree_from_sigs(company_name):
 
     sig_control_list = get_active_sig_persons_from_name(company_name)
     if not sig_control_list:
+        print(f"No significant controllers found for {company_name}")
         return []
 
     entity_data = []
@@ -228,3 +231,5 @@ def recusive_get_company_tree_from_sigs(company_name):
     traverse_entities(sig_control_list, company_number, company_name)
     
     return entity_data
+
+recusive_get_company_tree_from_sigs("Knight R&D")

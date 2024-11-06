@@ -86,7 +86,7 @@ class TestCompanyHouseAPI(unittest.TestCase):
         ]
         mock_get.return_value = mock_response
         
-        response = recusive_get_company_tree_from_sigs("Test Company", 2019, 2023)
+        response = recusive_get_company_tree_from_sigs("Test Company")
         self.assertIsNotNone(response)
         self.assertEqual(len(response), 1)
         self.assertEqual(response[0]['name'], 'John Doe')
