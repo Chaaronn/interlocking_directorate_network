@@ -2,6 +2,11 @@ import requests, re, os
 from datetime import datetime
 
 
+###
+### New Stuff that could be added
+###
+# Lookup old names
+
 api_key = os.getenv('API_KEY')
 ch_base_url = 'https://api.company-information.service.gov.uk/'
 
@@ -170,6 +175,29 @@ def constuct_ch_link(company_number):
     new_url = f"find-and-update.company-information.service.gov.uk/company/{company_number}/"
     return new_url
 
+import re
+
+def rename_control_outputs(nature_of_controls):
+    # Define the regex pattern to match text and numbers
+    pattern = re.compile(r'(\w+(?:-\w+)+)-(\d+)-to-(\d+)-percent')
+
+    # Define the function to replace matched patterns
+    def replace_func(match):
+        text = match.group(1).replace('-', ' ')
+        lower_bound = match.group(2)
+        upper_bound = match.group(3)
+        if text == 'ownership of shares':
+            return f"Ownership of shares: >{lower_bound}%"
+        elif text == 'voting rights':
+            return f"Voting rights: >{lower_bound}%"
+        return text
+
+    # Loop through the list and apply the regex replacement
+    for i, item in enumerate(nature_of_controls):
+        nature_of_controls[i] = pattern.sub(replace_func, item)
+
+    return nature_of_controls
+
 def recusive_get_company_tree_from_sigs(company_name):
     """
     Recursively fetches the company tree of significant controllers (SIGs) for a given company name.
@@ -182,7 +210,7 @@ def recusive_get_company_tree_from_sigs(company_name):
     """
 
     search_result = search_ch(company_name)
-    if not search_result:
+    if not search_result or not search_result.get('items'):
         print(f"No search results found for term {company_name}")
         return []
     
@@ -193,7 +221,7 @@ def recusive_get_company_tree_from_sigs(company_name):
     sig_control_list = get_active_sig_persons_from_name(company_name)
     if not sig_control_list:
         print(f"No significant controllers found for {company_name}")
-        return []
+        return [company_info]
 
     entity_data = []
     visited_entities = set()
@@ -214,7 +242,7 @@ def recusive_get_company_tree_from_sigs(company_name):
                             'company_name': company_name,
                             'etag': entity['etag'],
                             'name': entity['name'],
-                            'nature_of_control': entity['natures_of_control'],
+                            'nature_of_control': rename_control_outputs(entity['natures_of_control']),
                             'link': constuct_ch_link(company_number),
                             'kind': entity['kind'],
                             'notified_on' : entity['notified_on']
