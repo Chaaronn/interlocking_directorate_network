@@ -10,6 +10,13 @@ import webbrowser
 app = dash.Dash(__name__)
 app.title = "Interlocking Directorates Network"
 
+cache = {}
+
+
+# Global list to store search history
+search_history = []
+
+
 def normalise_company_name(name):
     return re.sub(r'[^a-zA-Z0-9]', '', name).lower()
 
@@ -123,12 +130,24 @@ def display_edge_info(edge_data):
         return f"Nature of Control: {edge_data['nature_of_control']}"
     return "Click on an edge to see the nature of control information."
 
+# Searcxh history
+@app.callback(
+    Output('input-company-name', 'value'),
+    [Input('search-history-dropdown', 'value')]
+)
+def select_from_history(selected_company):
+    if selected_company:
+        return selected_company
+    return ""
+
+
+
 '''
 Most of this layout is just placeholder during dev
 Lookup how to make this better
 '''
 app.layout = html.Div([
-    html.H1("Interlocking Directorates Network"),   # Needs a better name lol
+    html.H1("Interlocking Directorates Network"),
     html.Div([
         dcc.Input(id='input-company-name', type='text', placeholder='Enter Company Name'),
         html.Button(id='submit-button', n_clicks=0, children='Submit'),
@@ -141,47 +160,69 @@ app.layout = html.Div([
             cyto.Cytoscape(
                 id='cytoscape-network',
                 layout={'name': 'cose'},
-                style={'width': '100%', 'height': '800px'},
+                style={'width': '100%', 'height': '500px'},
                 elements=[],
                 stylesheet=[
                     {'selector': 'node', 'style': {'label': 'data(label)', 'color': 'black'}},
                     {'selector': '.company', 'style': {'background-color': 'red'}},
                     {'selector': '.entity', 'style': {'background-color': 'green'}},
-                    {'selector': '.search-company', 'style': {'background-color': 'blue'}},  # Original company
+                    {'selector': '.search-company', 'style': {'background-color': 'blue'}},
                     {'selector': 'edge', 'style': {'line-color': '#ccc'}},
                     {'selector': '.highlighted', 'style': {'background-color': '#FFD700', 'line-color': '#FFD700', 'width': 3}},
-                    # These aren't really working
                     {'selector': '.ownership-of-shares', 'style': {'line-color': 'red'}},
                     {'selector': '.voting-rights', 'style': {'line-color': 'blue'}},
-                    {'selector': '.right-to-appoint-remove-directors', 'style': {'line-color': 'green'}},
-                    # Need to add other styles for different natures of control here
+                    {'selector': '.right-to-appoint-remove-directors', 'style': {'line-color': 'green'}}
                 ]
             )
         ]
     ),
     html.Div(id='message', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'}),
     html.Div(id='dummy-output', style={'display': 'none'}),
+    html.Div([
+        html.H3("Search History"),
+        dcc.Dropdown(id='search-history-dropdown', options=[], placeholder="Select a past search")
+    ], style={'margin-top': '20px'})
 ])
 
-# Callback for submit button
 @app.callback(
     Output('cytoscape-network', 'elements'),
     Output('message', 'children'),
     Output('message', 'style'),
+    Output('search-history-dropdown', 'options'),
     [Input('submit-button', 'n_clicks')],
     [State('input-company-name', 'value')]
 )
 def update_network(n_clicks, company_name):
-    # Make sure a name has been typed
     if n_clicks > 0 and company_name:
         print(f"Search value: {company_name}")
-        directors_data = scraper.recusive_get_company_tree_from_sigs(company_name)
+        
+        # simple cache for now
+        if company_name in cache:
+            directors_data = cache[company_name]
+            print(f"Cache hit for company: {company_name}")
+        else:
+            directors_data = scraper.recusive_get_company_tree_from_sigs(company_name)
+            if directors_data:
+                cache[company_name] = directors_data
+                print(f"Cache store for company: {company_name}")
+                
         if not directors_data:
-            return [], f"No results found for company: {company_name}", {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'}
+            return [], f"No results found for company: {company_name}", {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'}, search_history
+        
         network = create_interlock_network(directors_data)
         elements = create_cytoscape_elements(network, company_name)
-        return elements, "", {'display': 'none'}
-    return [], "", {'display': 'none'}
+
+        # Update search history
+        if company_name not in search_history:
+            search_history.append(company_name)
+        
+        # Create options for the dropdown
+        options = [{'label': name, 'value': name} for name in search_history]
+
+        return elements, "", {'display': 'none'}, options
+    
+    return [], "", {'display': 'none'}, search_history
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)

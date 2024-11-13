@@ -175,9 +175,10 @@ def constuct_ch_link(company_number):
     new_url = f"find-and-update.company-information.service.gov.uk/company/{company_number}/"
     return new_url
 
-import re
-
 def rename_control_outputs(nature_of_controls):
+    '''
+    This needs vastly improving for all nature of control
+    '''
     # Define the regex pattern to match text and numbers
     pattern = re.compile(r'(\w+(?:-\w+)+)-(\d+)-to-(\d+)-percent')
 
