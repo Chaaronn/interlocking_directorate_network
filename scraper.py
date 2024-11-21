@@ -171,6 +171,32 @@ def get_entity_information(self_link):
         print('Error:', res.status_code)
         return None
 
+def get_filling_history(company_number):
+    
+    headers = {"Authorization" : f"Basic {api_key}"}
+
+    url = ch_base_url + f'company/{company_number}/filing-history'
+
+    r = session.get(url, headers=headers)
+    if r.status_code == 200:
+        return r.json()
+    else:
+        print(f"Call failed to {url} with code {r.status_code} and headers {r.headers}")
+        return
+
+def get_company_profile(company_number):
+
+    headers = {"Authorization" : f"Basic {api_key}"}
+    
+    url = ch_base_url + f'company/{company_number}'
+
+    r = session.get(url, headers=headers)
+    if r.status_code == 200:
+        return r.json()
+    else:
+        print(f"Call failed to {url} with code {r.status_code} and headers {r.headers}")
+        return
+
 def constuct_ch_link(company_number):
     new_url = f"find-and-update.company-information.service.gov.uk/company/{company_number}/"
     return new_url
@@ -237,6 +263,8 @@ def recusive_get_company_tree_from_sigs(company_name):
                 if entity['kind'] == 'corporate-entity-person-with-significant-control':
                     if entity['etag'] not in visited_entities:
 
+                        company_profile = get_company_profile(company_number)
+
                         visited_entities.add(entity['etag'])
                         entity_data.append({
                             'company_id': company_number,
@@ -246,7 +274,9 @@ def recusive_get_company_tree_from_sigs(company_name):
                             'nature_of_control': rename_control_outputs(entity['natures_of_control']),
                             'link': constuct_ch_link(company_number),
                             'kind': entity['kind'],
-                            'notified_on' : entity['notified_on']
+                            'notified_on' : entity['notified_on'],
+                            'locality' : entity['address']['locality'],
+                            'accounts' : company_profile['accounts']
                         })
 
                         other_sig_control_list = get_active_sig_persons_from_name(entity['name'])

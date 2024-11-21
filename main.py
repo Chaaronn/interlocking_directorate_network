@@ -10,6 +10,7 @@ import webbrowser
 app = dash.Dash(__name__)
 app.title = "Interlocking Directorates Network"
 
+# super basic cache for testing without pinging api
 cache = {}
 
 
@@ -47,8 +48,9 @@ def create_interlock_network(entity_data):
                 G.add_node(company_node, 
                            bipartite=0, 
                            label=data['company_name'],
-                           type='company', 
-                           link=data.get('link', ''))  # Get link. Using get to handle some companies without links
+                           type='company',
+                           accounts=data['accounts'], 
+                           link=data.get('link', ''))  # Using get to handle some companies without linksaccounts
                 visited_nodes.add(company_node)
 
             if entity_node not in visited_nodes:
@@ -73,9 +75,10 @@ def create_cytoscape_elements(graph, search_company):
     elements = []
     # normalise the name (comp house is caps by default)
     search_company_normalised = normalise_company_name(search_company)
+
     # NODES
     for node in graph.nodes():
-        # Get the data from the node
+        # Get the data for the node
         node_data = {
             'data': {'id': node, 'label': graph.nodes[node].get('label', node), 'link': graph.nodes[node].get('link', '')}
         }
@@ -106,21 +109,26 @@ def create_cytoscape_elements(graph, search_company):
         elements.append(edge_data)
     return elements
 
-# opening links
-### needs to change from opening a new browser
+# tap nodes
+#
 @app.callback(
-    Output('dummy-output', 'children'),  # Dummy output to avoid errors
+    Output('node-detail', 'children'),
+    Output('node-detail', 'style'),
     [Input('cytoscape-network', 'tapNodeData')]
 )
-def open_link(node_data):
+def display_node_data(node_data):
     if node_data:
-        # Get link from the clicked node
-        link = node_data.get('link')  
-        if link:
-            webbrowser.open(link)
-    return ""
+        details = [
+            html.H4("Company Details"),
+            html.P(f"Name: {node_data.get('label')}"),
+            html.P(f"ID: {node_data.get('id')}"),
+            html.P(f"Link: {node_data.get('link', 'N/A')}"),
+            # Add other details here
+        ]
+        return details, {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'}
+    return "", {'display': 'none'}
 
-# Callback to display edge info
+# Callback to tap edges
 @app.callback(
     Output('control-info', 'children'),
     Input('cytoscape-network', 'tapEdgeData')
@@ -139,6 +147,7 @@ def select_from_history(selected_company):
     if selected_company:
         return selected_company
     return ""
+
 
 
 
@@ -181,7 +190,8 @@ app.layout = html.Div([
     html.Div([
         html.H3("Search History"),
         dcc.Dropdown(id='search-history-dropdown', options=[], placeholder="Select a past search")
-    ], style={'margin-top': '20px'})
+    ], style={'margin-top': '20px'}),
+    html.Div(id='node-detail', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'})
 ])
 
 @app.callback(
