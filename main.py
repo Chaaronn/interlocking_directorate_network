@@ -80,7 +80,8 @@ def create_cytoscape_elements(graph, search_company):
     for node in graph.nodes():
         # Get the data for the node
         node_data = {
-            'data': {'id': node, 'label': graph.nodes[node].get('label', node), 'link': graph.nodes[node].get('link', '')}
+            'data': {'id': node, 'label': graph.nodes[node].get('label', node), 'link': graph.nodes[node].get('link', ''),
+                     'accounts' : graph.nodes[node].get('accounts', '')}
         }
         # Set company/entity
         node_classes = ['company' if graph.nodes[node].get('type') == 'company' else 'entity']
@@ -118,11 +119,17 @@ def create_cytoscape_elements(graph, search_company):
 )
 def display_node_data(node_data):
     if node_data:
+        link = node_data.get('link', 'N/A')
+
         details = [
             html.H4("Company Details"),
             html.P(f"Name: {node_data.get('label')}"),
             html.P(f"ID: {node_data.get('id')}"),
-            html.P(f"Link: {node_data.get('link', 'N/A')}"),
+            html.P([
+                "Link: ",
+                html.A(f"{link}", href=f'https://{link}', target="_blank")
+            ]),
+            html.P(f"Accounts: {node_data.get('accounts')}")
             # Add other details here
         ]
         return details, {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'}
