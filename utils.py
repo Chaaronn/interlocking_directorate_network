@@ -78,6 +78,7 @@ def create_cytoscape_elements(graph, search_company):
             node_classes.append('search-company')
         node_data['classes'] = ' '.join(node_classes)
         elements.append(node_data)
+    
     # EDGES
     for edge in graph.edges(data=True):
         # Get the nature of control info

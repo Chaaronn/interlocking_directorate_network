@@ -1,5 +1,5 @@
 from dash.dependencies import Input, Output, State
-from dash import html, dcc
+from dash import html
 import utils, scraper
 import logging
 
@@ -26,7 +26,7 @@ def register_callbacks(app):
             logging.info(f"Search value: {company_name}")
             
             # get the data
-            directors_data = utils.process_network_data(company_name, scraper.recusive_get_company_tree_from_sigs, cache)
+            directors_data = utils.process_network_data(company_name, scraper.get_company_tree, cache)
                     
             if not directors_data:
                 return [], f"No results found for company: {company_name}", {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'}, search_history
@@ -64,7 +64,8 @@ def register_callbacks(app):
             return selected_company
         return ""
     
-        # Analytics
+
+    # Analytics
     @app.callback(
     Output('collapse-analytics', 'is_open'),
     [Input('analytics-toggle', 'n_clicks')],

@@ -1,6 +1,5 @@
 import dash
 from dash import html, dcc
-from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
 import logging
@@ -77,17 +76,12 @@ app.layout = html.Div(
         style={'margin': '20px'}
     ),
 
-    # Analytics & Control
-    html.Div(
-        [
-            collapsible_analytics,
-            analytics_toggle,
-            html.Div(id='control-info', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px'}),
-        ],
-        className="analytics-container",
-        style={'margin': '20px'}
-    ),
     
+    
+    # Control Info
+    html.Div(id='control-info', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px'}),
+
+    # Cytoscape
     dcc.Loading(
         id='loading',
         type="default",
@@ -106,6 +100,17 @@ app.layout = html.Div(
     
     # Node Detail
     html.Div(id='node-detail', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'}),
+    
+    # Analytics
+    html.Div(
+        [
+            analytics_toggle,
+            collapsible_analytics,
+        ],
+        className="analytics-container",
+        style={'margin': '20px'}
+    ),
+    
     ])
 
 

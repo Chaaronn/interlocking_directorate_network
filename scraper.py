@@ -1,6 +1,8 @@
 import requests, re, os
-from datetime import datetime
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 ###
 ### New Stuff that could be added
@@ -13,6 +15,30 @@ ch_base_url = 'https://api.company-information.service.gov.uk/'
 session = requests.Session()
 session.auth= (api_key, "")
 
+# changed all calls to use this, easier to debug and opti
+def make_api_call(endpoint, params=None, method="GET"):
+
+    headers = {"Authorization": f"Basic {api_key}"}
+    
+    url = ch_base_url + endpoint
+
+    try:
+        if method == "GET":
+            r = session.get(url, headers=headers, params=params)
+        else:
+            raise NotImplementedError(f"HTTP method {method} not supported.")
+
+        if r.status_code == 200:
+            return r.json()
+        elif r.status_code == 404:
+            raise ValueError(f"Resource not found: {url}")
+        else:
+            raise RuntimeError(f"API call failed with status {r.status_code}: {r.text}")
+    except requests.RequestException as e:
+        raise RuntimeError(f"Request failed: {e}")
+
+
+
 def search_ch(name):
     """
     Searches for a company on the Companies House API using the provided company name.
@@ -24,18 +50,10 @@ def search_ch(name):
         dict: A dictionary containing the search results if the request is successful.
         If the request fails, it returns None and prints an error message.
     """
-    headers = {"Authorization" : f"Basic {api_key}"}
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("Company name must be a non-empty string.")
     
-    params = {"q" : name}
-
-    url = ch_base_url + 'search/companies'
-
-    r = session.get(url, headers=headers, params=params)
-    if r.status_code == 200:
-        return r.json()
-    else:
-        print(f"Call {params['q']} failed to {url} with code {r.status_code} and headers {r.headers}")
-        return
+    return make_api_call('search/companies', params={"q": name})
 
 def adv_search_ch(name_includes, name_excludes='', company_status='', company_subtype='', company_type='', 
                   dissolved_from='', dissolved_to='', incorporated_from='', incorporated_to='', location='',
@@ -118,21 +136,25 @@ def adv_search_ch(name_includes, name_excludes='', company_status='', company_su
 
 def get_persons_with_control_info(company_link):
 
-    headers = {"Authorization" : f"Basic {api_key}"}
-
     params = {"items_per_page" : '10',
               "start_index" : '0',
               "register_view": 'false'}
+    
+    return make_api_call(f"{company_link}/persons-with-significant-control", params=params)
 
-    url = ch_base_url + company_link + '/persons-with-significant-control'
+def get_entity_information(self_link):
+    '''
+    Returns info on corporate entities
 
-    r = session.get(url, headers=headers, params=params)
+    Input: self link from active_sig_entities
+    '''
+    return make_api_call(self_link)
 
-    if r.status_code == 200:
-        return r.json()
-    else:
-        print(f"Call failed to {url} with code {r.status_code} and headers {r.headers}")
-        return None
+def get_filling_history(company_number):
+    return make_api_call(f"company/{company_number}/filing-history'")
+
+def get_company_profile(company_number):
+    return make_api_call(f"company/{company_number}")
 
 def get_active_sig_persons_from_name(company_name):
 
@@ -146,8 +168,6 @@ def get_active_sig_persons_from_name(company_name):
         return []
 
     active_sig_persons = []
-    
-    # HERE NEEDS TO BE A CHECK FOR CEASED RATHER THAN USING ACTIVE
 
     for i in range(0, len(persons_sig['items'])):
         if not persons_sig['items'][i]['ceased']:
@@ -155,47 +175,6 @@ def get_active_sig_persons_from_name(company_name):
 
     return active_sig_persons
 
-def get_entity_information(self_link):
-    '''
-    Returns info on corporate entities
-
-    Input: self link from active_sig_entities
-    '''
-
-    res = session.get(ch_base_url + self_link)
-
-    if res.status_code == 200:
-        data = res.json()
-        return data
-    else:
-        print('Error:', res.status_code)
-        return None
-
-def get_filling_history(company_number):
-    
-    headers = {"Authorization" : f"Basic {api_key}"}
-
-    url = ch_base_url + f'company/{company_number}/filing-history'
-
-    r = session.get(url, headers=headers)
-    if r.status_code == 200:
-        return r.json()
-    else:
-        print(f"Call failed to {url} with code {r.status_code} and headers {r.headers}")
-        return
-
-def get_company_profile(company_number):
-
-    headers = {"Authorization" : f"Basic {api_key}"}
-    
-    url = ch_base_url + f'company/{company_number}'
-
-    r = session.get(url, headers=headers)
-    if r.status_code == 200:
-        return r.json()
-    else:
-        print(f"Call failed to {url} with code {r.status_code} and headers {r.headers}")
-        return
 
 def constuct_ch_link(company_number):
     new_url = f"find-and-update.company-information.service.gov.uk/company/{company_number}/"
@@ -225,7 +204,8 @@ def rename_control_outputs(nature_of_controls):
 
     return nature_of_controls
 
-def recusive_get_company_tree_from_sigs(company_name):
+
+def get_company_tree(company_name):
     """
     Recursively fetches the company tree of significant controllers (SIGs) for a given company name.
 
@@ -236,57 +216,64 @@ def recusive_get_company_tree_from_sigs(company_name):
         list: A list of dictionaries, each representing an entity with significant control over the company or its subsidiaries.
     """
 
-    search_result = search_ch(company_name)
-    if not search_result or not search_result.get('items'):
-        print(f"No search results found for term {company_name}")
-        return []
-    
-    company_info = search_result['items'][0]
-    company_number = company_info['company_number']
-    company_name = company_info['title']
+    def fetch_significant_controllers(company_name):
+        """Fetch significant controllers for a company by name."""
+        search_result = search_ch(company_name)
+        if not search_result or not search_result.get('items'):
+            print(f"No search results found for term {company_name}")
+            return None, None
 
-    sig_control_list = get_active_sig_persons_from_name(company_name)
-    if not sig_control_list:
+        company_info = search_result['items'][0]
+        significant_controllers = get_active_sig_persons_from_name(company_info['title'])
+        return company_info, significant_controllers
+    
+    def process_entity(entity, company_number, company_name):
+        """Process and structure information for a single significant control entity."""
+
+        company_profile = get_company_profile(company_number)
+        accounts = company_profile.get('accounts', {}) if company_profile else {}
+        return {
+            'company_id': company_number,
+            'company_name': company_name,
+            'etag': entity.get('etag'),
+            'name': entity.get('name'),
+            'nature_of_control': rename_control_outputs(entity.get('natures_of_control', [])),
+            'link': constuct_ch_link(company_number),
+            'kind': entity.get('kind'),
+            'notified_on': entity.get('notified_on'),
+            'locality': entity.get('address', {}).get('locality'),
+            'accounts': accounts
+        }
+    
+    def traverse_entities(entities, company_number, company_name):
+        """Traverse through entities recursively to build the tree."""
+
+        for entity in entities:
+            if not entity.get('ceased') and entity['kind'] == 'corporate-entity-person-with-significant-control':
+                if entity['etag'] not in visited_entities:
+                    visited_entities.add(entity['etag'])
+                    structured_data = process_entity(entity, company_number, company_name)
+                    entity_data.append(structured_data)
+
+                    # Fetch the next level of significant controllers
+                    other_company_name = entity['name']
+                    other_company_info, other_controllers = fetch_significant_controllers(other_company_name)
+
+                    if other_controllers and other_company_info:
+                        traverse_entities(other_controllers, other_company_info['company_number'], other_company_info['title'])
+    
+    
+    # Initial fetch for the root company
+    root_company_info, root_controllers = fetch_significant_controllers(company_name)
+
+    if not root_controllers:
         print(f"No significant controllers found for {company_name}")
-        return [company_info]
+        return [root_company_info] if root_company_info else []
 
     entity_data = []
     visited_entities = set()
 
-    def traverse_entities(entities, company_number, company_name):
-        
-        # for each in significant control
-        for entity in entities:
-            
-            # Changed to using ceaased to determine if it should be added
-            if not entity['ceased']:
-                if entity['kind'] == 'corporate-entity-person-with-significant-control':
-                    if entity['etag'] not in visited_entities:
+    # Traverse
+    traverse_entities(root_controllers, root_company_info['company_number'], root_company_info['title'])
 
-                        company_profile = get_company_profile(company_number)
-
-                        visited_entities.add(entity['etag'])
-                        entity_data.append({
-                            'company_id': company_number,
-                            'company_name': company_name,
-                            'etag': entity['etag'],
-                            'name': entity['name'],
-                            'nature_of_control': rename_control_outputs(entity['natures_of_control']),
-                            'link': constuct_ch_link(company_number),
-                            'kind': entity['kind'],
-                            'notified_on' : entity['notified_on'],
-                            'locality' : entity['address']['locality'],
-                            'accounts' : company_profile['accounts']
-                        })
-
-                        other_sig_control_list = get_active_sig_persons_from_name(entity['name'])
-
-                        # Potentially add in some validation on if individual or company here
-
-                        if other_sig_control_list:
-                            other_company_info = search_ch(entity['name'])['items'][0]
-                            traverse_entities(other_sig_control_list, other_company_info['company_number'], other_company_info['title'])
-    
-    traverse_entities(sig_control_list, company_number, company_name)
-    
     return entity_data
