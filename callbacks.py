@@ -17,7 +17,7 @@ def register_callbacks(app):
     Output('message', 'children'),
     Output('message', 'style'),
     Output('search-history-dropdown', 'options'),
-    Output('analytics', 'children'),
+    Output('collapse-analytics', 'children'),
     [Input('submit-button', 'n_clicks')],
     [State('input-company-name', 'value')]
     )
@@ -63,6 +63,18 @@ def register_callbacks(app):
         if selected_company:
             return selected_company
         return ""
+    
+        # Analytics
+    @app.callback(
+    Output('collapse-analytics', 'is_open'),
+    [Input('analytics-toggle', 'n_clicks')],
+    [State('collapse-analytics', 'is_open')]
+    )
+    def toggle_analytics(n_clicks, is_open):
+        if n_clicks:
+            return not is_open
+        return is_open
+
 
 
 
@@ -101,6 +113,7 @@ def register_cytoscape_callbacks(app):
         if edge_data:
             return f"Nature of Control: {edge_data['nature_of_control']}"
         return "Click on an edge to see the nature of control information."
+    
 
 
 
