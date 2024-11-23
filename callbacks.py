@@ -17,6 +17,7 @@ def register_callbacks(app):
     Output('message', 'children'),
     Output('message', 'style'),
     Output('search-history-dropdown', 'options'),
+    Output('analytics', 'children'),
     [Input('submit-button', 'n_clicks')],
     [State('input-company-name', 'value')]
     )
@@ -33,6 +34,15 @@ def register_callbacks(app):
             network = utils.create_interlock_network(directors_data)
             elements = utils.create_cytoscape_elements(network, company_name)
 
+            # Calculate analytics
+            metrics = utils.calculate_network_metrics(network)
+            analytics = [
+                html.H3("Network Analytics"),
+                html.P(f"Total Companies: {metrics['total_companies']}"),
+                html.P(f"Total Edges: {metrics['total_edges']}")
+            ]
+
+
             # Update search history
             if company_name not in search_history:
                 search_history.append(company_name)
@@ -40,9 +50,9 @@ def register_callbacks(app):
             # Create options for the dropdown
             options = [{'label': name, 'value': name} for name in search_history]
 
-            return elements, "", {'display': 'none'}, options
+            return elements, "", {'display': 'none'}, options, analytics
         
-        return [], "", {'display': 'none'}, search_history
+        return [], "", {'display': 'none'}, search_history, ""
     
     # Searcxh history
     @app.callback(

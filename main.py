@@ -23,6 +23,7 @@ app.layout = html.Div([
         #html.Button(id='reset-button', n_clicks=0, children='Reset View'), 
     ],
     className="input-container"),
+    html.Div(id='analytics', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px'}),
     html.Div(id='control-info', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px'}),
     dcc.Loading(
         id='loading',

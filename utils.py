@@ -109,3 +109,21 @@ def process_network_data(company_name, scraper, cache):
         logging.info(f"Cache store for company: {company_name}")
         cache[company_name] = data
     return data
+
+def calculate_network_metrics(graph):
+    """
+    Calculate basic metrics for the graph.
+    """
+    num_nodes = graph.number_of_nodes()
+    num_edges = graph.number_of_edges()
+    
+    # Split nodes by type
+    num_companies = sum(1 for _, data in graph.nodes(data=True) if data.get('type') == 'company')
+    
+    metrics = {
+        'total_nodes': num_nodes,
+        'total_edges': num_edges,
+        'total_companies': num_companies
+    }
+    
+    return metrics
