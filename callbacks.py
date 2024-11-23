@@ -27,10 +27,20 @@ def register_callbacks(app):
             
             # get the data
             directors_data = utils.process_network_data(company_name, scraper.get_company_tree, cache)
+            
                     
             if not directors_data:
-                return [], f"No results found for company: {company_name}", {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'}, search_history
+                # Provide all 5 outputs with appropriate placeholders
+                # This fixes issues where directors_data is empty
+                return (
+                    [],  # Empty elements for the network
+                    f"No results found for company: {company_name}",  # Message
+                    {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'},  # Message style
+                    [{'label': name, 'value': name} for name in search_history],  # Dropdown options
+                    []  # Empty analytics content
+                )
             
+
             network = utils.create_interlock_network(directors_data)
             elements = utils.create_cytoscape_elements(network, company_name)
 
@@ -52,7 +62,7 @@ def register_callbacks(app):
 
             return elements, "", {'display': 'none'}, options, analytics
         
-        return [], "", {'display': 'none'}, search_history, ""
+        return [], "", {'display': 'none'}, [{'label': name, 'value': name} for name in search_history], []
     
     # Searcxh history
     @app.callback(
