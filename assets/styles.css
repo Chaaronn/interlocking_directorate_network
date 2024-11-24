@@ -1,3 +1,4 @@
+/* Corrected CSS with valid IDs and classes */
 body {
     font-family: 'Arial', sans-serif;
     background-color: #f8f9fa;
@@ -55,3 +56,58 @@ h1 {
     color: #555;
 }
 
+/* Main Flex Container */
+#main-flex-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+/* Left Panel */
+#left-panel {
+    width: 100px;
+    height: 600px;
+    flex: 1;
+    padding: 20px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Center Panel */
+#center-panel {
+    width: 60%;
+    height: 600px;
+    flex: 2;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin: 0 10px;
+    overflow: hidden;
+}
+
+/* Right Panel */
+#right-panel {
+    width: 100px;
+    height: 600px;
+    flex: 1;
+    padding: 20px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 800px) {
+    #main-flex-container {
+        flex-direction: column;
+    }
+    
+    #left-panel,
+    #right-panel,
+    #center-panel {
+        margin-bottom: 20px;
+    }
+}

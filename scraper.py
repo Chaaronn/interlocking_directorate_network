@@ -1,5 +1,6 @@
 import requests, re, os
-import logging
+import logging, time
+from collections import deque
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,7 +15,15 @@ ch_base_url = 'https://api.company-information.service.gov.uk/'
 session = requests.Session()
 session.auth= (api_key, "")
 
-# changed all calls to use this, easier to debug and opti
+# Global list to store request timestamps
+request_timestamps = deque()
+
+# Define the rate limit and time window
+MAX_REQUESTS = 600  # Maximum number of requests
+TIME_WINDOW = 5 * 60  # 5 minutes (in seconds)
+
+
+# changed all calls to use this and below, easier to debug and opti
 def make_api_call(endpoint, params=None, method="GET"):
 
     headers = {"Authorization": f"Basic {api_key}"}
@@ -36,6 +45,29 @@ def make_api_call(endpoint, params=None, method="GET"):
     except requests.RequestException as e:
         raise RuntimeError(f"Request failed: {e}")
 
+# added rate limiting automatically
+def rate_limited_make_api_call(endpoint, params=None, method="GET"):
+    """
+    Makes an API call while adhering to rate limiting (600 requests per 5 minutes).
+    """
+    # Check if exceeded the rate limit
+    current_time = time.time()
+    
+    # Remove old timestamps that are outside the window
+    while request_timestamps and current_time - request_timestamps[0] > TIME_WINDOW:
+        request_timestamps.popleft()
+    
+    if len(request_timestamps) >= MAX_REQUESTS:
+        # Wait until next request
+        sleep_time = TIME_WINDOW - (current_time - request_timestamps[0])
+        logging.info(f"Rate limit exceeded, sleeping for {sleep_time:.2f} seconds.")
+        time.sleep(sleep_time)
+
+    # Add the current time to the request queue
+    request_timestamps.append(current_time)
+
+    # Now make the API call
+    return make_api_call(endpoint, params=params, method=method)
 
 
 def search_ch(name):
@@ -52,7 +84,7 @@ def search_ch(name):
     if not isinstance(name, str) or not name.strip():
         raise ValueError("Company name must be a non-empty string.")
     
-    return make_api_call('search/companies', params={"q": name})
+    return rate_limited_make_api_call('search/companies', params={"q": name})
 
 def adv_search_ch(name_includes, name_excludes='', company_status='', company_subtype='', company_type='', 
                   dissolved_from='', dissolved_to='', incorporated_from='', incorporated_to='', location='',
@@ -139,7 +171,7 @@ def get_persons_with_control_info(company_link):
               "start_index" : '0',
               "register_view": 'false'}
     
-    return make_api_call(f"{company_link}/persons-with-significant-control", params=params)
+    return rate_limited_make_api_call(f"{company_link}/persons-with-significant-control", params=params)
 
 def get_entity_information(self_link):
     '''
@@ -147,13 +179,13 @@ def get_entity_information(self_link):
 
     Input: self link from active_sig_entities
     '''
-    return make_api_call(self_link)
+    return rate_limited_make_api_call(self_link)
 
 def get_filling_history(company_number):
-    return make_api_call(f"company/{company_number}/filing-history'")
+    return rate_limited_make_api_call(f"company/{company_number}/filing-history'")
 
 def get_company_profile(company_number):
-    return make_api_call(f"company/{company_number}")
+    return rate_limited_make_api_call(f"company/{company_number}")
 
 def get_active_sig_persons_from_name(company_name):
 

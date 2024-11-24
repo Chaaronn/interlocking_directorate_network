@@ -60,58 +60,66 @@ analytics_toggle = html.Button(
 
 app.layout = html.Div(
     [
-    # Navigation bar
-    html.Div(
-            html.H1("Interlocking Directorates Network", style={'textAlign': 'center'}),
-            style={'position': 'sticky', 'top': 0, 'backgroundColor': '#f8f9fa', 'zIndex': 1000, 'padding': '10px'}
+        # Main Flex Container
+        html.Div(
+            [
+                # Left Panel
+                html.Div(id="left-panel", children=[
+                    
+                    # Input section
+                    html.Div(
+                        [
+                            dcc.Input(id='input-company-name', type='text', placeholder='Enter Company Name'),
+                            html.Button(id='submit-button', n_clicks=0, children='Submit'),
+                        ],
+                        className="input-container",
+                        style={'margin': '20px'}
+                    ),
+
+                    # Control Info
+                    html.Div(id='control-info', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px'}),
+                ]),
+
+                # Center Panel
+                
+                html.Div(id="center-panel", children=[
+                    dcc.Loading(
+                        id='loading',
+                        type="default",
+                        children=[
+                            cytoscape_container
+                        ]
+                    ),
+                    html.Div(id='message', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'}),
+                    html.Div(id='dummy-output', style={'display': 'none'}),
+
+                    # Search History
+                    html.Div([
+                        html.H3("Search History"),
+                        dcc.Dropdown(id='search-history-dropdown', options=[], placeholder="Select a past search")
+                    ], style={'margin-top': '20px'}),
+                ]),
+
+                # Right Panel
+                html.Div(id="right-panel", children=[
+                    html.Div(id='node-detail', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'}),
+                    
+                    # Analytics
+                    html.Div(
+                        [
+                            analytics_toggle,
+                            collapsible_analytics,
+                        ],
+                        className="analytics-container",
+                        style={'margin': '20px'}
+                    ),
+                ])
+            ],
+            id="main-flex-container",
         ),
-    
-    # Input section
-    html.Div(
-        [
-            dcc.Input(id='input-company-name', type='text', placeholder='Enter Company Name'),
-            html.Button(id='submit-button', n_clicks=0, children='Submit'),
-        ],
-        className="input-container",
-        style={'margin': '20px'}
-    ),
+    ]
+)
 
-    
-    
-    # Control Info
-    html.Div(id='control-info', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px'}),
-
-    # Cytoscape
-    dcc.Loading(
-        id='loading',
-        type="default",
-        children=[
-            cytoscape_container
-        ]
-    ),
-    html.Div(id='message', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'}),
-    html.Div(id='dummy-output', style={'display': 'none'}),
-
-    # Search History
-    html.Div([
-        html.H3("Search History"),
-        dcc.Dropdown(id='search-history-dropdown', options=[], placeholder="Select a past search")
-    ], style={'margin-top': '20px'}),
-    
-    # Node Detail
-    html.Div(id='node-detail', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'}),
-    
-    # Analytics
-    html.Div(
-        [
-            analytics_toggle,
-            collapsible_analytics,
-        ],
-        className="analytics-container",
-        style={'margin': '20px'}
-    ),
-    
-    ])
 
 
 if __name__ == '__main__':
