@@ -2,7 +2,6 @@ import requests, re, os
 import logging
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 ###
 ### New Stuff that could be added
@@ -219,6 +218,7 @@ def get_company_tree(company_name):
     def fetch_significant_controllers(company_name):
         """Fetch significant controllers for a company by name."""
         search_result = search_ch(company_name)
+
         if not search_result or not search_result.get('items'):
             print(f"No search results found for term {company_name}")
             return None, None
@@ -232,24 +232,27 @@ def get_company_tree(company_name):
 
         company_profile = get_company_profile(company_number)
         accounts = company_profile.get('accounts', {}) if company_profile else {}
+        previous_names = company_profile.get("previous_company_names", {}) if company_profile else {}
+
         return {
             'company_id': company_number,
             'company_name': company_name,
-            'etag': entity.get('etag'),
-            'name': entity.get('name'),
+            'etag': entity.get('etag', f"default-{company_number}"),
+            'name': entity.get('name', 'No name found'),
             'nature_of_control': rename_control_outputs(entity.get('natures_of_control', [])),
             'link': constuct_ch_link(company_number),
-            'kind': entity.get('kind'),
-            'notified_on': entity.get('notified_on'),
-            'locality': entity.get('address', {}).get('locality'),
-            'accounts': accounts
+            'kind': entity.get('kind', 'No kind found'),
+            'notified_on': entity.get('notified_on', 'No data found'),
+            'locality': entity.get('address', {}).get('locality', 'No locality found'),
+            'accounts': accounts,
+            'previous_names' : previous_names
         }
     
     def traverse_entities(entities, company_number, company_name):
         """Traverse through entities recursively to build the tree."""
 
         for entity in entities:
-            if not entity.get('ceased') and entity['kind'] == 'corporate-entity-person-with-significant-control':
+            if not entity.get('ceased') and entity['kind'] == 'corporate-entity-person-with-significant-control': # As we only care about companies, not individuals
                 if entity['etag'] not in visited_entities:
                     visited_entities.add(entity['etag'])
                     structured_data = process_entity(entity, company_number, company_name)
@@ -266,9 +269,21 @@ def get_company_tree(company_name):
     # Initial fetch for the root company
     root_company_info, root_controllers = fetch_significant_controllers(company_name)
 
+    # Handle cases where no sig controlers exist by returning base info
     if not root_controllers:
-        print(f"No significant controllers found for {company_name}")
-        return [root_company_info] if root_company_info else []
+        logging.info(f"No significant controllers found for {company_name}")
+        return [{
+        'company_id': root_company_info.get('company_number', 'Unknown'),
+        'company_name': root_company_info.get('title', company_name),
+        'etag': root_company_info.get('etag', 'Unknown'),
+        'nature_of_control': [],
+        'link': constuct_ch_link(root_company_info.get('company_number', 'Unknown')),
+        'kind': 'root',
+        'notified_on': 'N/A',
+        'locality': root_company_info.get('address_snippet', 'Unknown'),
+        'accounts': {'last_accounts' : {'period_end_on' : 'NA'}},
+        'previous_names': root_company_info.get('previous_company_names', [])
+        }] if root_company_info else []
 
     entity_data = []
     visited_entities = set()

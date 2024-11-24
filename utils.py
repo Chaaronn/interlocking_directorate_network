@@ -34,8 +34,9 @@ def create_interlock_network(entity_data):
                            bipartite=0, 
                            label=data['company_name'],
                            type='company',
-                           period_end=data['accounts']['last_accounts']['period_end_on'], 
-                           link=data.get('link', ''))  # Using get to handle some companies without linksaccounts
+                           period_end=data['accounts']['last_accounts']['period_end_on'],
+                           previous_names=data['previous_names'], 
+                           link=data.get('link', ''))  # Using get to handle some companies without links
                 visited_nodes.add(company_node)
 
             if entity_node not in visited_nodes:
@@ -67,7 +68,7 @@ def create_cytoscape_elements(graph, search_company):
         # Get the data for the node
         node_data = {
             'data': {'id': node, 'label': graph.nodes[node].get('label', node), 'link': graph.nodes[node].get('link', ''),
-                     'period_end' : graph.nodes[node].get('period_end', '')}
+                     'period_end' : graph.nodes[node].get('period_end', ''), 'previous_names' : graph.nodes[node].get('previous_names','')}
         }
         # Set company/entity
         node_classes = ['company' if graph.nodes[node].get('type') == 'company' else 'entity']

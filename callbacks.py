@@ -109,7 +109,8 @@ def register_cytoscape_callbacks(app):
                     "Link: ",
                     html.A(f"{link}", href=f'https://{link}', target="_blank")
                 ]),
-                html.P(f"Period Ends: {node_data.get('period_end')}")
+                html.P(f"Period Ends: {node_data.get('period_end')}"),
+                html.P(f"Previous names: {node_data.get('previous_names')}")
                 # Add other details here
             ]
             return details, {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'}
@@ -142,10 +143,4 @@ def reset_view(n_clicks, elements, layout):
     if n_clicks > 0:
         return 1.0, elements, {'name': layout}
     return dash.no_update, dash.no_update, dash.no_update
-'''
-
-
-'''
-Most of this layout is just placeholder during dev
-Lookup how to make this better
 '''
