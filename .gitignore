@@ -4,3 +4,4 @@ control_outputs.txt
 *.pyc
 *.pyo
 __pycache__/
+__pycache__/scraper.cpython-312.pyc
