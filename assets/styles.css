@@ -65,7 +65,7 @@ h1 {
 
 /* Left Panel */
 #left-panel {
-    width: 100px;
+    width: 20%;
     height: 600px;
     flex: 1;
     padding: 20px;
@@ -79,7 +79,7 @@ h1 {
 #center-panel {
     width: 60%;
     height: 600px;
-    flex: 2;
+    flex: 3;
     border: 1px solid #ccc;
     background-color: #fff;
     border-radius: 8px;
@@ -90,7 +90,7 @@ h1 {
 
 /* Right Panel */
 #right-panel {
-    width: 100px;
+    width: 20%;
     height: 600px;
     flex: 1;
     padding: 20px;

@@ -75,9 +75,13 @@ app.layout = html.Div(
                         className="input-container",
                         style={'margin': '20px'}
                     ),
+                    
+                    # Search History
+                    html.Div([
+                        html.H3("Search History"),
+                        dcc.Dropdown(id='search-history-dropdown', options=[], placeholder="Select a past search")
+                    ], style={'margin-top': '20px'}),
 
-                    # Control Info
-                    html.Div(id='control-info', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px'}),
                 ]),
 
                 # Center Panel
@@ -93,17 +97,15 @@ app.layout = html.Div(
                     html.Div(id='message', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'}),
                     html.Div(id='dummy-output', style={'display': 'none'}),
 
-                    # Search History
-                    html.Div([
-                        html.H3("Search History"),
-                        dcc.Dropdown(id='search-history-dropdown', options=[], placeholder="Select a past search")
-                    ], style={'margin-top': '20px'}),
+
                 ]),
 
                 # Right Panel
                 html.Div(id="right-panel", children=[
                     html.Div(id='node-detail', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'}),
-                    
+
+                    # Control Info
+                    html.Div(id='control-info', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px'}),                    
                     # Analytics
                     html.Div(
                         [
