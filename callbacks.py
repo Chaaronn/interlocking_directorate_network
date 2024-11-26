@@ -1,7 +1,8 @@
 from dash.dependencies import Input, Output, State
-from dash import html
+from dash import html, no_update, dcc
 import utils, scraper
-import logging
+import logging, os
+from flask import send_file
 
 
 # Cache and search history
@@ -25,8 +26,11 @@ def register_callbacks(app):
         if n_clicks > 0 and company_name:
             logging.info(f"Search value: {company_name}")
             
+            # get the first company here to store the name
+            # VERY VERY VERY BAD to do this, but to test doc downloader
+            first_result = scraper.search_ch(company_name)['items'][0]['title']
             # get the data
-            directors_data = utils.process_network_data(company_name, scraper.get_company_tree, cache)
+            directors_data = utils.process_network_data(first_result, scraper.get_company_tree, cache)
             
                     
             if not directors_data:
@@ -73,7 +77,6 @@ def register_callbacks(app):
         if selected_company:
             return selected_company
         return ""
-    
 
     # Analytics
     @app.callback(
@@ -85,6 +88,9 @@ def register_callbacks(app):
         if n_clicks:
             return not is_open
         return is_open
+    
+
+
 
 
 
@@ -95,9 +101,11 @@ def register_cytoscape_callbacks(app):
     @app.callback(
         Output('node-detail', 'children'),
         Output('node-detail', 'style'),
-        [Input('cytoscape-network', 'tapNodeData')]
+        Output("document-dropdown", "options"),
+        [Input("input-company-name", "value"),
+        Input('cytoscape-network', 'tapNodeData')]
     )
-    def display_node_data(node_data):
+    def display_node_data(company_name, node_data):
         if node_data:
             link = node_data.get('link', 'N/A')
 
@@ -113,8 +121,30 @@ def register_cytoscape_callbacks(app):
                 html.P(f"Previous names: {node_data.get('previous_names')}")
                 # Add other details here
             ]
-            return details, {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'}
-        return "", {'display': 'none'}
+
+            
+            # Document search 
+            # currently doesnt work as its not exact
+            # this needs to be linked with the search somehow to take the name, but also store
+            # new data on node tap, maybe a button?
+            data = utils.fetch_document_records(company_name=node_data.get('label'), cache=cache)
+            if not data or 'items' not in data:
+                logging.error(f"Documents list empty for {company_name}")
+                return []
+            document_list = data['items']
+            logging.info(f"Fetched documents for {node_data.get('label')}: {data}")
+
+            # Transform documents into dropdown options
+            options = [
+                {
+                    'label': f"{doc.get('description', 'Unknown')} ({doc.get('date', 'N/A')})",
+                    'value': doc['transaction_id'],
+                }
+                for doc in document_list
+            ]
+
+            return details, {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'}, options    
+        return "", {'display': 'none'}, []
 
     # tap Edge data
     @app.callback(
@@ -125,7 +155,28 @@ def register_cytoscape_callbacks(app):
         if edge_data:
             return f"Nature of Control: {edge_data['nature_of_control']}"
         return "Click on an edge to see the nature of control information."
+
+
     
+    # Downloader
+    @app.callback(
+    Output("download-link", "data"),
+    [Input("download-button", "n_clicks")],
+    [State("document-dropdown", "value")]
+    )
+    def download_selected_document(n_clicks, selected_document):
+        if not n_clicks or not selected_document:
+            return no_update
+
+        try:
+            # Attempt to download the document
+            logging.info(f"Trying to download file {selected_document}")
+            file_path = scraper.get_document(selected_document)
+            if file_path:
+                return dcc.send_file(file_path)  # Serve the file for download
+        except Exception as e:
+            logging.error(f"Failed to process document {selected_document} download: {e}")
+            raise RuntimeError(f"Request failed: {e}")  
 
 
 

@@ -129,3 +129,16 @@ def calculate_network_metrics(graph):
     }
     
     return metrics
+
+def fetch_document_records(company_name, cache):
+    if company_name in cache:
+        logging.info(f"Cache hit for {company_name}")
+        hit = cache[company_name]
+        filing_history = hit[0].get('filing_history', [])
+
+        if not filing_history:
+            logging.warning(f"No filing history found for {company_name}")
+        return filing_history
+    else:
+        logging.info(f"No cache hit for {company_name} when fetching records")
+        return []

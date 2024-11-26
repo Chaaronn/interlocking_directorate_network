@@ -6,3 +6,4 @@ control_outputs.txt
 __pycache__/
 __pycache__/scraper.cpython-312.pyc
 __pycache__/scraper.cpython-312.pyc
+*.pdf

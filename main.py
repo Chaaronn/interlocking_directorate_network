@@ -58,6 +58,23 @@ analytics_toggle = html.Button(
     style={'margin': '10px'}
 )
 
+
+download_section = html.Div(
+    [
+        dcc.Dropdown(
+            id="document-dropdown",
+            options=[],  # Will be populated dynamically
+            placeholder="Select a document to download",
+            style={'margin-bottom': '10px'}
+        ),
+        html.Button("Download", id="download-button", n_clicks=0),
+        dcc.Download(id="download-link"),  # Used to handle downloads
+    ],
+    style={'margin': '20px'}
+)
+
+
+
 app.layout = html.Div(
     [
         # Main Flex Container
@@ -82,6 +99,12 @@ app.layout = html.Div(
                         dcc.Dropdown(id='search-history-dropdown', options=[], placeholder="Select a past search")
                     ], style={'margin-top': '20px'}),
 
+                    # Add SME input fields to the left panel
+                    html.Div(
+                            [
+                                html.H3("Document Downloader"),
+                                download_section,  # Add this to the layout
+                    ], style={'margin': '20px'}),
                 ]),
 
                 # Center Panel

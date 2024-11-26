@@ -86,6 +86,7 @@ def search_ch(name):
     
     return rate_limited_make_api_call('search/companies', params={"q": name})
 
+
 def adv_search_ch(name_includes, name_excludes='', company_status='', company_subtype='', company_type='', 
                   dissolved_from='', dissolved_to='', incorporated_from='', incorporated_to='', location='',
                     sic_codes=''):
@@ -146,9 +147,6 @@ def adv_search_ch(name_includes, name_excludes='', company_status='', company_su
         if status not in valid_company_status:
             raise ValueError(f"Invalid company status: {status}. Valid options are: {valid_company_status}.")
 
-
-    headers = {"Authorization": f"Basic {api_key}"}
-
     params = {
         "company_name_includes": name_includes,
         "company_name_excludes": name_excludes,
@@ -156,14 +154,7 @@ def adv_search_ch(name_includes, name_excludes='', company_status='', company_su
         "sic_codes": ",".join(sic_codes)  # Convert list to comma-separated string
     }
 
-    url = ch_base_url + "advanced-search/companies"
-
-    r = session.get(url, headers=headers, params=params)
-    if r.status_code == 200:
-        return r.json()
-    else:
-        print(f"Call {params} failed to {url} with code {r.status_code} and headers {r.headers}")
-        return
+    return rate_limited_make_api_call("advanced-search/companies", params={"q" : params})
 
 def get_persons_with_control_info(company_link):
 
@@ -181,11 +172,54 @@ def get_entity_information(self_link):
     '''
     return rate_limited_make_api_call(self_link)
 
-def get_filling_history(company_number):
-    return rate_limited_make_api_call(f"company/{company_number}/filing-history'")
+def get_filling_history(company_number,document_type):
+    return rate_limited_make_api_call(f"company/{company_number}/filing-history", params={"q" : document_type})
 
 def get_company_profile(company_number):
     return rate_limited_make_api_call(f"company/{company_number}")
+
+def get_document(document_id, method='GET'):
+    
+    # This needs a rework of the make_api_call and rate_limited but this is fine for testing
+    # Also, lookup rate limit for this
+    headers = {"Authorization": f"Basic {api_key}"}
+    
+    url = f"https://frontend-doc-api.company-information.service.gov.uk/document/{document_id}/content"
+
+    # always initialise
+    file_path = ''
+
+    try:
+        logging.info(f"Requesting document {document_id} from URL: {url}")
+        r = requests.get(url, headers=headers)
+        
+        # Check the response status
+        if r.status_code == 200:
+            logging.info(f"Document {document_id} exists. Starting download.")
+            
+            # Save the document locally
+            file_path = f"/tmp/{document_id}.pdf"
+            with open(file_path, "wb") as f:
+                f.write(r.content)
+                logging.info(f"Wrote document {document_id} to {file_path}")
+            
+            # Return the path to serve the file later
+            return file_path
+        else:
+            raise ValueError(f"Failed to download document: HTTP {r.status_code}")
+    
+    except requests.RequestException as e:
+        # Handle general request exceptions
+        logging.error(f"Request for document {document_id} failed: {e}")
+        raise RuntimeError(f"Request failed: {e}")
+
+    finally:
+        # Ensure file cleanup only happens if file_path was assigned
+        if file_path and os.path.exists(file_path):
+            logging.info(f"Cleaning up file: {file_path}")
+            os.remove(file_path)
+
+
 
 def get_active_sig_persons_from_name(company_name):
 
@@ -205,7 +239,6 @@ def get_active_sig_persons_from_name(company_name):
             active_sig_persons.append(persons_sig['items'][i])
 
     return active_sig_persons
-
 
 def constuct_ch_link(company_number):
     new_url = f"find-and-update.company-information.service.gov.uk/company/{company_number}/"
@@ -235,7 +268,6 @@ def rename_control_outputs(nature_of_controls):
 
     return nature_of_controls
 
-
 def get_company_tree(company_name):
     """
     Recursively fetches the company tree of significant controllers (SIGs) for a given company name.
@@ -263,6 +295,7 @@ def get_company_tree(company_name):
         """Process and structure information for a single significant control entity."""
 
         company_profile = get_company_profile(company_number)
+        filling_history = get_filling_history(company_number, document_type='accounts') # maybe need to add handling of no history
         accounts = company_profile.get('accounts', {}) if company_profile else {}
         previous_names = company_profile.get("previous_company_names", {}) if company_profile else {}
 
@@ -277,7 +310,8 @@ def get_company_tree(company_name):
             'notified_on': entity.get('notified_on', 'No data found'),
             'locality': entity.get('address', {}).get('locality', 'No locality found'),
             'accounts': accounts,
-            'previous_names' : previous_names
+            'previous_names' : previous_names,
+            'filing_history' : filling_history
         }
     
     def traverse_entities(entities, company_number, company_name):
@@ -314,7 +348,8 @@ def get_company_tree(company_name):
         'notified_on': 'N/A',
         'locality': root_company_info.get('address_snippet', 'Unknown'),
         'accounts': {'last_accounts' : {'period_end_on' : 'NA'}},
-        'previous_names': root_company_info.get('previous_company_names', [])
+        'previous_names': root_company_info.get('previous_company_names', []),
+        'filing_history' : get_filling_history(root_company_info.get('company_number', 'Unknown'))
         }] if root_company_info else []
 
     entity_data = []
