@@ -1,7 +1,7 @@
 /* Corrected CSS with valid IDs and classes */
 body {
     font-family: 'Arial', sans-serif;
-    background-color: #f8f9fa;
+    background-color: #c7c7c7;
     margin: 0;
     padding: 20px;
 }
@@ -110,4 +110,23 @@ h1 {
     #center-panel {
         margin-bottom: 20px;
     }
+}
+
+/* Set the width of the dropdown */
+.dash-dropdown {
+    max-width: 300px; 
+    white-space: normal; /* Allow text to wrap */
+}
+
+/* Style the dropdown options */
+.VirtualizedSelectOption {
+    max-width: 300px; 
+    white-space: normal; /* Allow text to wrap */
+    overflow-wrap: break-word; /* Break long words if necessary */
+}
+
+/* Optional: Set height for each option */
+.VirtualizedSelectOption {
+    height: auto; /* Adjust height automatically based on content */
+    padding: 10px; 
 }

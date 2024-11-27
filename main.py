@@ -65,7 +65,8 @@ download_section = html.Div(
             id="document-dropdown",
             options=[],  # Will be populated dynamically
             placeholder="Select a document to download",
-            style={'margin-bottom': '10px'}
+            style={'margin-bottom': '10px'},
+            className="dash-dropdown"
         ),
         html.Button("Download", id="download-button", n_clicks=0),
         dcc.Download(id="download-link"),  # Used to handle downloads

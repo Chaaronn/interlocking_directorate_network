@@ -1,6 +1,7 @@
-import requests, re, os
+import requests, re, os, tempfile
 import logging, time
 from collections import deque
+import base64
 
 logging.basicConfig(level=logging.INFO)
 
@@ -178,30 +179,41 @@ def get_filling_history(company_number,document_type):
 def get_company_profile(company_number):
     return rate_limited_make_api_call(f"company/{company_number}")
 
-def get_document(document_id, method='GET'):
+def get_document(document_metadata, method='GET'):
     
     # This needs a rework of the make_api_call and rate_limited but this is fine for testing
     # Also, lookup rate limit for this
-    headers = {"Authorization": f"Basic {api_key}"}
+    encoded_key = base64.b64encode(api_key.encode('utf-8')).decode('utf-8')
     
-    url = f"https://frontend-doc-api.company-information.service.gov.uk/document/{document_id}/content"
+    headers = {"Authorization": f"Basic {encoded_key}"}
+    
+    url = f"{document_metadata}/content"
 
     # always initialise
+    temp_dir = tempfile.gettempdir()
     file_path = ''
 
     try:
-        logging.info(f"Requesting document {document_id} from URL: {url}")
+        logging.info(f"Requesting document {document_metadata} from URL: {url}")
         r = requests.get(url, headers=headers)
         
+        # handle redirects, as this will send to AWS I think?
+
+        if r.status_code == 302:  # Redirect response
+            redirected_url = r.headers.get("Location")  # Get the redirect location
+            logging.info(f"Redirected to {redirected_url}")
+            # Follow the redirect manually and include the Authorization header
+            r = requests.get(redirected_url, headers=headers)
+
         # Check the response status
         if r.status_code == 200:
-            logging.info(f"Document {document_id} exists. Starting download.")
+            logging.info(f"Document {document_metadata} exists. Starting download.")
             
             # Save the document locally
-            file_path = f"/tmp/{document_id}.pdf"
+            file_path = os.path.join(temp_dir, f"document.pdf")
             with open(file_path, "wb") as f:
                 f.write(r.content)
-                logging.info(f"Wrote document {document_id} to {file_path}")
+                logging.info(f"Wrote document {document_metadata} to {file_path}")
             
             # Return the path to serve the file later
             return file_path
@@ -210,16 +222,10 @@ def get_document(document_id, method='GET'):
     
     except requests.RequestException as e:
         # Handle general request exceptions
-        logging.error(f"Request for document {document_id} failed: {e}")
+        logging.error(f"Request for document {document_metadata} failed: {e}")
         raise RuntimeError(f"Request failed: {e}")
 
-    finally:
-        # Ensure file cleanup only happens if file_path was assigned
-        if file_path and os.path.exists(file_path):
-            logging.info(f"Cleaning up file: {file_path}")
-            os.remove(file_path)
-
-
+#get_document('MzQxMDYzODQxNmFkaXF6a2N4')
 
 def get_active_sig_persons_from_name(company_name):
 

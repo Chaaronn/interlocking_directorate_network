@@ -131,14 +131,16 @@ def register_cytoscape_callbacks(app):
             if not data or 'items' not in data:
                 logging.error(f"Documents list empty for {company_name}")
                 return []
+
             document_list = data['items']
-            logging.info(f"Fetched documents for {node_data.get('label')}: {data}")
+
+            # logging.info(f"Fetched documents for {node_data.get('label')}: {data}")
 
             # Transform documents into dropdown options
             options = [
                 {
                     'label': f"{doc.get('description', 'Unknown')} ({doc.get('date', 'N/A')})",
-                    'value': doc['transaction_id'],
+                    'value': doc['links']["document_metadata"],
                 }
                 for doc in document_list
             ]
@@ -158,11 +160,10 @@ def register_cytoscape_callbacks(app):
 
 
     
-    # Downloader
     @app.callback(
-    Output("download-link", "data"),
-    [Input("download-button", "n_clicks")],
-    [State("document-dropdown", "value")]
+        Output("download-link", "data"),
+        [Input("download-button", "n_clicks")],
+        [State("document-dropdown", "value")]
     )
     def download_selected_document(n_clicks, selected_document):
         if not n_clicks or not selected_document:
@@ -173,10 +174,20 @@ def register_cytoscape_callbacks(app):
             logging.info(f"Trying to download file {selected_document}")
             file_path = scraper.get_document(selected_document)
             if file_path:
-                return dcc.send_file(file_path)  # Serve the file for download
+                # Serve the file for download
+                logging.info(f"Serving file {file_path} to user.")
+                return dcc.send_file(file_path)
         except Exception as e:
             logging.error(f"Failed to process document {selected_document} download: {e}")
-            raise RuntimeError(f"Request failed: {e}")  
+            raise RuntimeError(f"Request failed: {e}")
+        finally:
+            # Cleanup file if it exists
+            if 'file_path' in locals() and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    logging.info(f"Cleaned up temporary file: {file_path}")
+                except Exception as cleanup_error:
+                    logging.warning(f"Failed to clean up temporary file {file_path}: {cleanup_error}")
 
 
 
