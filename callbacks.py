@@ -97,6 +97,8 @@ def register_callbacks(app):
 
 # Tap callbacks
 def register_cytoscape_callbacks(app):
+    
+    
     # Tap node data
     @app.callback(
         Output('node-detail', 'children'),
@@ -124,10 +126,8 @@ def register_cytoscape_callbacks(app):
 
             
             # Document search 
-            # currently doesnt work as its not exact
-            # this needs to be linked with the search somehow to take the name, but also store
-            # new data on node tap, maybe a button?
-            data = utils.fetch_document_records(company_name=node_data.get('label'), cache=cache)
+            # Needs to be updated somewhere to get filiing history on node tap, populate download that way
+            data = utils.fetch_document_records(company_name=node_data.get('label'), cache=cache, company_number=node_data.get('number'))
             if not data or 'items' not in data:
                 logging.error(f"Documents list empty for {company_name}")
                 return []

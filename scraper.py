@@ -87,7 +87,6 @@ def search_ch(name):
     
     return rate_limited_make_api_call('search/companies', params={"q": name})
 
-
 def adv_search_ch(name_includes, name_excludes='', company_status='', company_subtype='', company_type='', 
                   dissolved_from='', dissolved_to='', incorporated_from='', incorporated_to='', location='',
                     sic_codes=''):
@@ -173,8 +172,8 @@ def get_entity_information(self_link):
     '''
     return rate_limited_make_api_call(self_link)
 
-def get_filling_history(company_number,document_type):
-    return rate_limited_make_api_call(f"company/{company_number}/filing-history", params={"q" : document_type})
+def get_filling_history(company_number):
+    return rate_limited_make_api_call(f"company/{company_number}/filing-history")
 
 def get_company_profile(company_number):
     return rate_limited_make_api_call(f"company/{company_number}")
@@ -301,7 +300,7 @@ def get_company_tree(company_name):
         """Process and structure information for a single significant control entity."""
 
         company_profile = get_company_profile(company_number)
-        filling_history = get_filling_history(company_number, document_type='accounts') # maybe need to add handling of no history
+        filling_history = get_filling_history(company_number) # maybe need to add handling of no history
         accounts = company_profile.get('accounts', {}) if company_profile else {}
         previous_names = company_profile.get("previous_company_names", {}) if company_profile else {}
 

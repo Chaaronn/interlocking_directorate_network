@@ -1,5 +1,6 @@
 import re, logging
 import networkx as nx
+from scraper import get_filling_history
 
 # Helper to normalise names
 def normalise_company_name(name):
@@ -33,6 +34,7 @@ def create_interlock_network(entity_data):
                 G.add_node(company_node, 
                            bipartite=0, 
                            label=data['company_name'],
+                           number = data['company_id'],
                            type='company',
                            period_end=data['accounts']['last_accounts']['period_end_on'],
                            previous_names=data['previous_names'], 
@@ -67,7 +69,7 @@ def create_cytoscape_elements(graph, search_company):
     for node in graph.nodes():
         # Get the data for the node
         node_data = {
-            'data': {'id': node, 'label': graph.nodes[node].get('label', node), 'link': graph.nodes[node].get('link', ''),
+            'data': {'id': node, 'label': graph.nodes[node].get('label', node), 'number': graph.nodes[node].get('number', ''), 'link': graph.nodes[node].get('link', ''),
                      'period_end' : graph.nodes[node].get('period_end', ''), 'previous_names' : graph.nodes[node].get('previous_names','')}
         }
         # Set company/entity
@@ -130,7 +132,7 @@ def calculate_network_metrics(graph):
     
     return metrics
 
-def fetch_document_records(company_name, cache):
+def fetch_document_records(company_name, cache, company_number):
     if company_name in cache:
         logging.info(f"Cache hit for {company_name}")
         hit = cache[company_name]
@@ -141,4 +143,7 @@ def fetch_document_records(company_name, cache):
         return filing_history
     else:
         logging.info(f"No cache hit for {company_name} when fetching records")
-        return []
+        logging.info(f"Searching filiing for number {company_number}")
+        filing_history = get_filling_history(company_number)
+
+        return filing_history
