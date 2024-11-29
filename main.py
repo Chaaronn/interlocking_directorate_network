@@ -58,7 +58,6 @@ analytics_toggle = html.Button(
     style={'margin': '10px'}
 )
 
-
 download_section = html.Div(
     [
         dcc.Dropdown(
@@ -78,7 +77,22 @@ download_section = html.Div(
     }
 )
 
+search_history = html.Div(
+    [
+        html.H3("Search History"),
+        dcc.Dropdown(id='search-history-dropdown', options=[], placeholder="Select a past search")
+    ], 
+    style={'margin-top': '20px'}
+)
 
+input_section = html.Div(
+    [
+        dcc.Input(id='input-company-name', type='text', placeholder='Enter Company Name'),
+        html.Button(id='submit-button', n_clicks=0, children='Submit'),
+    ],
+    className="input-container",
+    style={'margin': '20px'}
+)
 
 app.layout = html.Div(
     [
@@ -89,20 +103,9 @@ app.layout = html.Div(
                 html.Div(id="left-panel", children=[
                     
                     # Input section
-                    html.Div(
-                        [
-                            dcc.Input(id='input-company-name', type='text', placeholder='Enter Company Name'),
-                            html.Button(id='submit-button', n_clicks=0, children='Submit'),
-                        ],
-                        className="input-container",
-                        style={'margin': '20px'}
-                    ),
+                    input_section,
                     
-                    # Search History
-                    html.Div([
-                        html.H3("Search History"),
-                        dcc.Dropdown(id='search-history-dropdown', options=[], placeholder="Select a past search")
-                    ], style={'margin-top': '20px'}),
+                    search_history,
 
                     # Add SME input fields to the left panel
                     html.Div(
@@ -124,8 +127,6 @@ app.layout = html.Div(
                     ),
                     html.Div(id='message', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'}),
                     html.Div(id='dummy-output', style={'display': 'none'}),
-
-
                 ]),
 
                 # Right Panel
