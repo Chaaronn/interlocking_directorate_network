@@ -26,6 +26,21 @@ TIME_WINDOW = 5 * 60  # 5 minutes (in seconds)
 
 # changed all calls to use this and below, easier to debug and opti
 def make_api_call(endpoint, params=None, method="GET"):
+    """
+    Makes an API call to the specified endpoint with the given parameters and HTTP method.
+
+    Args:
+        endpoint (str): The API endpoint to make the request to.
+        params (dict, optional): A dictionary of parameters to include in the request.
+        method (str, optional): The HTTP method to use for the request (default is "GET").
+
+    Returns:
+        dict: The JSON response from the API if the request is successful.
+
+    Raises:
+        RuntimeError: If the API call fails or returns a non-200 status code.
+        ValueError: If the resource is not found (404).
+    """
 
     headers = {"Authorization": f"Basic {api_key}"}
     
@@ -50,6 +65,14 @@ def make_api_call(endpoint, params=None, method="GET"):
 def rate_limited_make_api_call(endpoint, params=None, method="GET"):
     """
     Makes an API call while adhering to rate limiting (600 requests per 5 minutes).
+
+    Args:
+        endpoint (str): The API endpoint to make the request to.
+        params (dict, optional): A dictionary of parameters to include in the request.
+        method (str, optional): The HTTP method to use for the request (default is "GET").
+
+    Returns:
+        dict: The JSON response from the API if the request is successful.
     """
     # Check if exceeded the rate limit
     current_time = time.time()
@@ -81,6 +104,9 @@ def search_ch(name):
     Returns:
         dict: A dictionary containing the search results if the request is successful.
         If the request fails, it returns None and prints an error message.
+    
+    Raises:
+        ValueError: If the company name is not a non-empty string.
     """
     if not isinstance(name, str) or not name.strip():
         raise ValueError("Company name must be a non-empty string.")
@@ -91,17 +117,26 @@ def adv_search_ch(name_includes, name_excludes='', company_status='', company_su
                   dissolved_from='', dissolved_to='', incorporated_from='', incorporated_to='', location='',
                     sic_codes=''):
     """
-    Advanced searches for a company on the Companies House API using the provided company details.
+    Performs an advanced search for a company on the Companies House API using various company details.
 
     Args:
-        name_includes (str): Items within the company name (e.g., Knight, R&D etc.) Should normally be the full company name
-        name_excludes (str): Items within the company name to exclude formsearch. Helpful when two companies have similar names.
-        company_status (list): The company status advanced search filter. To search using multiple values, use a comma delimited list or multiple of the same key i.e. company_status=xxx&company_status=yyy
-        sic_codes (list): The SIC codes advanced search filter. To search using multiple values, use a comma delimited list or multiple of the same key i.e. sic_codes=xxx&sic_codes=yyy 
+        name_includes (str): The part of the company name to search for.
+        name_excludes (str): The part of the company name to exclude from the search.
+        company_status (list or str): The company status filter for the search.
+        company_subtype (str, optional): The company subtype filter.
+        company_type (str, optional): The company type filter.
+        dissolved_from (str, optional): The date filter for when the company was dissolved.
+        dissolved_to (str, optional): The date filter for when the company was dissolved.
+        incorporated_from (str, optional): The date filter for when the company was incorporated.
+        incorporated_to (str, optional): The date filter for when the company was incorporated.
+        location (str, optional): The location filter for the search.
+        sic_codes (list or str, optional): The SIC code filter for the search.
 
     Returns:
         dict: A dictionary containing the search results if the request is successful.
-        If the request fails, it returns None and prints an error message.
+
+    Raises:
+        ValueError: If invalid input types are provided for the arguments.
     """
 
     # Validate input types
@@ -157,6 +192,15 @@ def adv_search_ch(name_includes, name_excludes='', company_status='', company_su
     return rate_limited_make_api_call("advanced-search/companies", params={"q" : params})
 
 def get_persons_with_control_info(company_link):
+    """
+    Retrieves information about persons with significant control (PSC) for a company using its link.
+
+    Args:
+        company_link (str): The link to the company's details in the Companies House API.
+
+    Returns:
+        dict: A dictionary containing information about persons with significant control (PSC).
+    """
 
     params = {"items_per_page" : '10',
               "start_index" : '0',
@@ -165,20 +209,56 @@ def get_persons_with_control_info(company_link):
     return rate_limited_make_api_call(f"{company_link}/persons-with-significant-control", params=params)
 
 def get_entity_information(self_link):
-    '''
-    Returns info on corporate entities
+    """
+    Retrieves information about a corporate entity using its self link.
 
-    Input: self link from active_sig_entities
-    '''
+    Args:
+        self_link (str): The self link of the corporate entity.
+
+    Returns:
+        dict: A dictionary containing the entity information.
+    """
     return rate_limited_make_api_call(self_link)
 
 def get_filling_history(company_number):
+    """
+    Retrieves the filing history of a company using its company number.
+
+    Args:
+        company_number (str): The company number of the company.
+
+    Returns:
+        dict: A dictionary containing the filing history of the company.
+    """
     return rate_limited_make_api_call(f"company/{company_number}/filing-history")
 
 def get_company_profile(company_number):
+    """
+    Retrieves the company profile of a company using its company number.
+
+    Args:
+        company_number (str): The company number of the company.
+
+    Returns:
+        dict: A dictionary containing the profile information of the company.
+    """
     return rate_limited_make_api_call(f"company/{company_number}")
 
 def get_document(document_metadata, method='GET'):
+    """
+    Retrieves and downloads a document from the Companies House API using document metadata.
+
+    Args:
+        document_metadata (str): The metadata of the document to be retrieved.
+        method (str, optional): The HTTP method to use for the request (default is "GET").
+
+    Returns:
+        str: The file path where the document was saved.
+
+    Raises:
+        RuntimeError: If the request for the document fails.
+        ValueError: If the document retrieval fails.
+    """
     
     # This needs a rework of the make_api_call and rate_limited but this is fine for testing
     # Also, lookup rate limit for this
@@ -224,8 +304,16 @@ def get_document(document_metadata, method='GET'):
         logging.error(f"Request for document {document_metadata} failed: {e}")
         raise RuntimeError(f"Request failed: {e}")
 
-
 def get_active_sig_persons_from_name(company_name):
+    """
+    Retrieves a list of active persons with significant control (PSC) for a company using the company name.
+
+    Args:
+        company_name (str): The name of the company to search for.
+
+    Returns:
+        list: A list of active persons with significant control (PSC) for the company.
+    """
 
     res = search_ch(company_name)
 
@@ -245,34 +333,18 @@ def get_active_sig_persons_from_name(company_name):
     return active_sig_persons
 
 def constuct_ch_link(company_number):
+    """
+    Constructs the Companies House link for a company using its company number.
+
+    Args:
+        company_number (str): The company number of the company.
+
+    Returns:
+        str: The Companies House link for the company.
+    """
+
     new_url = f"find-and-update.company-information.service.gov.uk/company/{company_number}/"
     return new_url
-
-def rename_control_outputs(nature_of_controls):
-    '''
-    This needs vastly improving for all nature of control
-    '''
-    # Define the regex pattern to match text and numbers
-    pattern = re.compile(r'(\w+(?:-\w+)+)-(\d+)-to-(\d+)-percent')
-
-    # Define the function to replace matched patterns
-    def replace_func(match):
-        text = match.group(1).replace('-', ' ')
-        lower_bound = match.group(2)
-        upper_bound = match.group(3)
-        if text == 'ownership of shares':
-            return f"Ownership of shares: >{lower_bound}%"
-        elif text == 'voting rights':
-            return f"Voting rights: >{lower_bound}%"
-        return text
-
-    # Loop through the list and apply the regex replacement
-    for i, item in enumerate(nature_of_controls):
-        nature_of_controls[i] = pattern.sub(replace_func, item)
-
-    return nature_of_controls
-
-
 
 def get_company_tree(company_name):
     """

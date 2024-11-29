@@ -13,6 +13,15 @@ search_history = []
 
 # Main search function
 def register_callbacks(app):
+    """
+    Registers callbacks for updating the network and interacting with the search history.
+
+    Inputs:
+        app: The Dash app instance.
+
+    Outputs:
+        None.
+    """
     @app.callback(
     Output('cytoscape-network', 'elements'),
     Output('message', 'children'),
@@ -23,6 +32,20 @@ def register_callbacks(app):
     [State('input-company-name', 'value')]
     )
     def update_network(n_clicks, company_name):
+        """
+        Handles the search and updates the network visualization based on the company name input.
+
+        Inputs:
+            n_clicks: The number of times the submit button has been clicked.
+            company_name: The name of the company entered by the user.
+
+        Outputs:
+            elements: A list of Cytoscape elements to display in the network.
+            message: A message to show to the user (error or success).
+            message_style: A style dictionary for the message box.
+            options: The dropdown options for the search history.
+            analytics: A list of analytics (network metrics like total companies and edges).
+        """
         if n_clicks > 0 and company_name:
             logging.info(f"Search value: {company_name}")
             
@@ -74,6 +97,15 @@ def register_callbacks(app):
         [Input('search-history-dropdown', 'value')]
     )
     def select_from_history(selected_company):
+        """
+        Handles the selection of a company from the search history dropdown.
+
+        Inputs:
+            selected_company: The company name selected from the dropdown.
+
+        Outputs:
+            The company name to be displayed in the search input.
+        """
         if selected_company:
             return selected_company
         return ""
@@ -85,6 +117,16 @@ def register_callbacks(app):
     [State('collapse-analytics', 'is_open')]
     )
     def toggle_analytics(n_clicks, is_open):
+        """
+        Toggles the visibility of the analytics section based on the button click.
+
+        Inputs:
+            n_clicks: The number of times the analytics toggle button has been clicked.
+            is_open: The current state of the analytics section (whether it's open or closed).
+
+        Outputs:
+            is_open: The updated state of the analytics section (open or closed).
+        """
         if n_clicks:
             return not is_open
         return is_open
@@ -108,6 +150,18 @@ def register_cytoscape_callbacks(app):
         Input('cytoscape-network', 'tapNodeData')]
     )
     def display_node_data(company_name, node_data):
+        """
+        Displays detailed information about a node when it is clicked in the Cytoscape network.
+
+        Inputs:
+            company_name: The name of the company from the search input.
+            node_data: Data related to the clicked node, including ID, link, previous names, etc.
+
+        Outputs:
+            details: A list of HTML components to display the node's details.
+            style: A style dictionary for the node details section.
+            options: A list of options for the document dropdown based on the node's company.
+        """
         if node_data:
             link = node_data.get('link', 'N/A')
 
@@ -167,6 +221,16 @@ def register_cytoscape_callbacks(app):
         Input('cytoscape-network', 'elements')
     )
     def display_edge_info(edge_data, elements):
+        """
+        Displays information about the edge (relationship) between two nodes when clicked.
+
+        Inputs:
+            edge_data: Data related to the clicked edge, including source, target, and nature of control.
+            elements: The complete list of elements in the Cytoscape network (nodes and edges).
+
+        Outputs:
+            children: A list of HTML components displaying the edge description.
+        """
         if edge_data:
             
             source_node_id = edge_data.get('source', '')
@@ -186,7 +250,7 @@ def register_cytoscape_callbacks(app):
 
             nature_of_control_list = [item.strip() for item in nature_of_control.split(',')] if nature_of_control else []
             
-            
+
             descriptions = [
                 utils.NATURE_OF_CONTROL_DICT.get(control, "Unknown description")
                 for control in nature_of_control_list
@@ -205,6 +269,16 @@ def register_cytoscape_callbacks(app):
         [State("document-dropdown", "value")]
     )
     def download_selected_document(n_clicks, selected_document):
+        """
+        Handles the download of a selected document when the download button is clicked.
+
+        Inputs:
+            n_clicks: The number of times the download button has been clicked.
+            selected_document: The ID of the selected document to download.
+
+        Outputs:
+            A file object or `no_update` to prevent updates if conditions aren't met.
+        """
         if not n_clicks or not selected_document:
             return no_update
 

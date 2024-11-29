@@ -4,9 +4,27 @@ from scraper import get_filling_history
 
 # Helper to normalise names
 def normalise_company_name(name):
+    """
+    Normalizes the company name by removing non-alphanumeric characters and converting to lowercase.
+
+    Inputs:
+        name: The company name to normalize.
+
+    Outputs:
+        A normalized version of the company name in lowercase with non-alphanumeric characters removed.
+    """
     return re.sub(r'[^a-zA-Z0-9]', '', name).lower()
 
 def clean_yaml_description(description):
+    """
+    Cleans the description text by removing curly braces content and Markdown asterisks.
+
+    Inputs:
+        description: The description text to clean.
+
+    Outputs:
+        The cleaned description text.
+    """
 
     cleaned_desc = re.sub(r'\{.*?\}', '', description)
 
@@ -15,10 +33,17 @@ def clean_yaml_description(description):
 
     return cleaned_desc
 
-
-
 # Helper to load any YAML files
 def load_descriptions(filepath):
+    """
+    Loads YAML descriptions from the given file path.
+
+    Inputs:
+        filepath: The path to the YAML file to load.
+
+    Outputs:
+        descriptions: A dictionary containing the descriptions from the YAML file.
+    """
 
     with open(filepath, 'r') as file:
 
@@ -36,6 +61,15 @@ NATURE_OF_CONTROL_DICT = load_descriptions('yamls/psc_descriptions.yml')
 
 # Create the network
 def create_interlock_network(entity_data):
+    """
+    Creates a network graph representing the relationships between companies and entities.
+
+    Inputs:
+        entity_data: A list of dictionaries containing company and entity information.
+
+    Outputs:
+        G: A NetworkX graph representing the interlock between companies and entities.
+    """
     # Create the graph
     G = nx.Graph()
     # Set nodes for the initial company, and the last visited one
@@ -89,6 +123,17 @@ def create_interlock_network(entity_data):
 
 # Create the elements to fill the graph
 def create_cytoscape_elements(graph, search_company):
+    """
+    Converts a NetworkX graph into Cytoscape elements for visualization, highlighting the search company.
+
+    Inputs:
+        graph: A NetworkX graph representing the interlock network.
+        search_company: The name of the company to highlight in the graph.
+
+    Outputs:
+        elements: A list of dictionaries representing Cytoscape elements (nodes and edges).
+    """
+
     # Empty list to hold all the nodes in the graph
     elements = []
     # normalise the name (comp house is caps by default)
@@ -129,8 +174,19 @@ def create_cytoscape_elements(graph, search_company):
         elements.append(edge_data)
     return elements
 
-
 def process_network_data(company_name, scraper, cache):
+    """
+    Processes the network data for a given company, utilizing a cache for efficiency.
+
+    Inputs:
+        company_name: The name of the company to retrieve data for.
+        scraper: The scraper function to fetch data for the company.
+        cache: A dictionary storing previously fetched company data.
+
+    Outputs:
+        The company data (if available) either from the cache or fetched via the scraper.
+    """
+
     # Simple cache
     if company_name in cache:
         logging.info(f"Cache hit for company: {company_name}")
@@ -145,7 +201,13 @@ def process_network_data(company_name, scraper, cache):
 
 def calculate_network_metrics(graph):
     """
-    Calculate basic metrics for the graph.
+    Calculates basic metrics for a given network graph, such as the total number of nodes, edges, and companies.
+
+    Inputs:
+        graph: A NetworkX graph representing the interlock network.
+
+    Outputs:
+        metrics: A dictionary containing the total nodes, edges, and companies in the network.
     """
     num_nodes = graph.number_of_nodes()
     num_edges = graph.number_of_edges()
@@ -162,6 +224,18 @@ def calculate_network_metrics(graph):
     return metrics
 
 def fetch_document_records(company_name, cache, company_number):
+    """
+    Fetches the filing history of a company, either from the cache or by calling an external scraper.
+
+    Inputs:
+        company_name: The name of the company to fetch the filing history for.
+        cache: A dictionary storing previously fetched filing history data.
+        company_number: The unique identifier of the company for external scraping.
+
+    Outputs:
+        filing_history: A list of filing history records for the company.
+    """
+
     if company_name in cache:
         logging.info(f"Cache hit for {company_name}")
         hit = cache[company_name]
@@ -178,6 +252,16 @@ def fetch_document_records(company_name, cache, company_number):
         return filing_history
     
 def get_document_options(document_list):
+    """
+    Generates a list of document options for the dropdown, based on the document list.
+
+    Inputs:
+        document_list: A list of documents with metadata to generate options from.
+
+    Outputs:
+        options: A list of dictionaries containing the label and value for each document option.
+    """
+    
     options = []
 
     for doc in document_list:
