@@ -1,10 +1,38 @@
-import re, logging
+import re, logging, yaml
 import networkx as nx
 from scraper import get_filling_history
 
 # Helper to normalise names
 def normalise_company_name(name):
     return re.sub(r'[^a-zA-Z0-9]', '', name).lower()
+
+def clean_yaml_description(description):
+
+    cleaned_desc = re.sub(r'\{.*?\}', '', description)
+
+    # Remove Markdown asterisks (**) if present
+    cleaned_desc = cleaned_desc.replace("**", "")
+
+    return cleaned_desc
+
+
+
+# Helper to load any YAML files
+def load_descriptions(filepath):
+
+    with open(filepath, 'r') as file:
+
+        yaml_data = yaml.safe_load(file)
+    
+    if yaml_data:
+        descriptions = yaml_data.get("description", {})
+        return descriptions
+    else:
+        logging.error(f"Error in accessing YAML file {filepath}")
+
+# Global variable to hold the parsed descriptions
+DESCRIPTIONS_DICT = load_descriptions('yamls/filing_history_descriptions.yml')
+NATURE_OF_CONTROL_DICT = load_descriptions('yamls/psc_descriptions.yml')
 
 # Create the network
 def create_interlock_network(entity_data):
@@ -53,6 +81,7 @@ def create_interlock_network(entity_data):
             if last_entity_node:
                 G.add_edge(last_entity_node, entity_node, nature_of_control=data['nature_of_control'])
             last_entity_node = entity_node
+    
     # Sets top company as blue        
     if top_company_node:
         G.nodes[top_company_node]['color'] = 'blue'
@@ -147,3 +176,17 @@ def fetch_document_records(company_name, cache, company_number):
         filing_history = get_filling_history(company_number)
 
         return filing_history
+    
+def get_document_options(document_list):
+    options = []
+
+    for doc in document_list:
+        doc_code = doc.get("description", "") 
+        doc_description = DESCRIPTIONS_DICT.get(doc_code, "Unknown Description")
+        doc_date = doc.get("date", "N/A")  # Extract the document date
+
+        # Format the display text for the dropdown
+        display_text = f"{doc_description} ({doc_date})"
+        options.append({"label": clean_yaml_description(display_text), "value": doc["links"]["document_metadata"]})
+
+    return options

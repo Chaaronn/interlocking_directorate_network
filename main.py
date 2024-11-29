@@ -71,7 +71,11 @@ download_section = html.Div(
         html.Button("Download", id="download-button", n_clicks=0),
         dcc.Download(id="download-link"),  # Used to handle downloads
     ],
-    style={'margin': '20px'}
+    style={
+        "fontSize": "14px",  # Adjust font size
+        "lineHeight": "1.5",  # Increase spacing between lines
+        "padding": "10px",  # Add padding for a clean look
+    }
 )
 
 

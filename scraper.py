@@ -193,7 +193,7 @@ def get_document(document_metadata, method='GET'):
     file_path = ''
 
     try:
-        logging.info(f"Requesting document {document_metadata} from URL: {url}")
+        #logging.info(f"Requesting document {document_metadata} from URL: {url}")
         r = requests.get(url, headers=headers)
         
         # handle redirects, as this will send to AWS I think?
@@ -201,7 +201,7 @@ def get_document(document_metadata, method='GET'):
         if r.status_code == 302:  # Redirect response
             redirected_url = r.headers.get("Location")  # Get the redirect location
             logging.info(f"Redirected to {redirected_url}")
-            # Follow the redirect manually and include the Authorization header
+            # Follow the redirect manually and include the Auth header
             r = requests.get(redirected_url, headers=headers)
 
         # Check the response status
@@ -224,7 +224,6 @@ def get_document(document_metadata, method='GET'):
         logging.error(f"Request for document {document_metadata} failed: {e}")
         raise RuntimeError(f"Request failed: {e}")
 
-#get_document('MzQxMDYzODQxNmFkaXF6a2N4')
 
 def get_active_sig_persons_from_name(company_name):
 
@@ -273,6 +272,8 @@ def rename_control_outputs(nature_of_controls):
 
     return nature_of_controls
 
+
+
 def get_company_tree(company_name):
     """
     Recursively fetches the company tree of significant controllers (SIGs) for a given company name.
@@ -309,7 +310,7 @@ def get_company_tree(company_name):
             'company_name': company_name,
             'etag': entity.get('etag', f"default-{company_number}"),
             'name': entity.get('name', 'No name found'),
-            'nature_of_control': rename_control_outputs(entity.get('natures_of_control', [])),
+            'nature_of_control': entity.get('natures_of_control', []),
             'link': constuct_ch_link(company_number),
             'kind': entity.get('kind', 'No kind found'),
             'notified_on': entity.get('notified_on', 'No data found'),

@@ -120,8 +120,26 @@ def register_cytoscape_callbacks(app):
                     html.A(f"{link}", href=f'https://{link}', target="_blank")
                 ]),
                 html.P(f"Period Ends: {node_data.get('period_end')}"),
-                html.P(f"Previous names: {node_data.get('previous_names')}")
-                # Add other details here
+                html.Div([
+                    html.H5("Previous Names:"),
+                    html.Table(
+                        # Table header
+                        [
+                            html.Tr([html.Th("Name"), html.Th("Effective From"), html.Th("Ceased On")])
+                        ]
+                        +
+                        # Table rows for each previous name
+                        [
+                            html.Tr([
+                                html.Td(name.get("name", "N/A")),
+                                html.Td(name.get("effective_from", "N/A")),
+                                html.Td(name.get("ceased_on", "N/A"))
+                            ])
+                            for name in node_data.get("previous_names", [])
+                        ],
+                        style={"width": "100%", "borderCollapse": "collapse"}
+                    )
+                ])
             ]
 
             
@@ -136,14 +154,8 @@ def register_cytoscape_callbacks(app):
 
             # logging.info(f"Fetched documents for {node_data.get('label')}: {data}")
 
-            # Transform documents into dropdown options
-            options = [
-                {
-                    'label': f"{doc.get('description', 'Unknown')} ({doc.get('date', 'N/A')})",
-                    'value': doc['links']["document_metadata"],
-                }
-                for doc in document_list
-            ]
+            options = utils.get_document_options(document_list)
+
 
             return details, {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'}, options    
         return "", {'display': 'none'}, []
@@ -151,11 +163,38 @@ def register_cytoscape_callbacks(app):
     # tap Edge data
     @app.callback(
         Output('control-info', 'children'),
-        Input('cytoscape-network', 'tapEdgeData')
+        Input('cytoscape-network', 'tapEdgeData'),
+        Input('cytoscape-network', 'elements')
     )
-    def display_edge_info(edge_data):
+    def display_edge_info(edge_data, elements):
         if edge_data:
-            return f"Nature of Control: {edge_data['nature_of_control']}"
+            
+            source_node_id = edge_data.get('source', '')
+            target_node_id = edge_data.get('target', '')
+            source_node_name = ''
+            target_node_name = ''
+
+            for node in elements:
+                if node['data']['id'] == source_node_id:
+                    source_node_name = node['data']['label']
+                elif node['data']['id'] == target_node_id:
+                    target_node_name = node['data']['label']
+
+                      
+
+            nature_of_control = edge_data.get('nature_of_control', "")
+
+            nature_of_control_list = [item.strip() for item in nature_of_control.split(',')] if nature_of_control else []
+            
+            
+            descriptions = [
+                utils.NATURE_OF_CONTROL_DICT.get(control, "Unknown description")
+                for control in nature_of_control_list
+            ]
+
+            return [
+                html.P(f"{source_node_name} {description} {target_node_name}") for description in descriptions
+            ]
         return "Click on an edge to see the nature of control information."
 
 
@@ -171,7 +210,7 @@ def register_cytoscape_callbacks(app):
 
         try:
             # Attempt to download the document
-            logging.info(f"Trying to download file {selected_document}")
+            #logging.info(f"Trying to download file {selected_document}")
             file_path = scraper.get_document(selected_document)
             if file_path:
                 # Serve the file for download
