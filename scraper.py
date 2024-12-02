@@ -48,7 +48,7 @@ def make_api_call(endpoint, params=None, method="GET"):
 
     try:
         if method == "GET":
-            r = session.get(url, headers=headers, params=params)
+            r = session.get(url, headers=headers, params=params, timeout=30)
         else:
             raise NotImplementedError(f"HTTP method {method} not supported.")
 
@@ -244,6 +244,10 @@ def get_company_profile(company_number):
     """
     return rate_limited_make_api_call(f"company/{company_number}")
 
+def get_company_registers(company_number):
+    return rate_limited_make_api_call(f"company/{company_number}/registers")
+
+
 def get_document(document_metadata, method='GET'):
     """
     Retrieves and downloads a document from the Companies House API using document metadata.
@@ -274,7 +278,7 @@ def get_document(document_metadata, method='GET'):
 
     try:
         #logging.info(f"Requesting document {document_metadata} from URL: {url}")
-        r = requests.get(url, headers=headers)
+        r = requests.get(url, headers=headers, timeout=30)
         
         # handle redirects, as this will send to AWS I think?
 
@@ -282,7 +286,7 @@ def get_document(document_metadata, method='GET'):
             redirected_url = r.headers.get("Location")  # Get the redirect location
             logging.info(f"Redirected to {redirected_url}")
             # Follow the redirect manually and include the Auth header
-            r = requests.get(redirected_url, headers=headers)
+            r = requests.get(redirected_url, headers=headers, )
 
         # Check the response status
         if r.status_code == 200:

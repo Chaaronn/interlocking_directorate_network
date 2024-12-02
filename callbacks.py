@@ -252,12 +252,12 @@ def register_cytoscape_callbacks(app):
             
 
             descriptions = [
-                utils.NATURE_OF_CONTROL_DICT.get(control, "Unknown description")
+                utils.clean_yaml_description(utils.NATURE_OF_CONTROL_DICT.get(control, "Unknown description"))
                 for control in nature_of_control_list
             ]
 
             return [
-                html.P(f"{source_node_name} {description} {target_node_name}") for description in descriptions
+                html.P(f"{target_node_name} {description} {source_node_name}") for description in descriptions
             ]
         return "Click on an edge to see the nature of control information."
 

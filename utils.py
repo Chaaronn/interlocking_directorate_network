@@ -5,7 +5,7 @@ from scraper import get_filling_history
 # Helper to normalise names
 def normalise_company_name(name):
     """
-    Normalizes the company name by removing non-alphanumeric characters and converting to lowercase.
+    Normalises the company name by removing non-alphanumeric characters and converting to lowercase.
 
     Inputs:
         name: The company name to normalize.
@@ -30,6 +30,10 @@ def clean_yaml_description(description):
 
     # Remove Markdown asterisks (**) if present
     cleaned_desc = cleaned_desc.replace("**", "")
+
+    # For the nature of control side
+    cleaned_desc = cleaned_desc.replace("The person", "")
+    cleaned_desc = cleaned_desc.replace("the company.", "")
 
     return cleaned_desc
 
