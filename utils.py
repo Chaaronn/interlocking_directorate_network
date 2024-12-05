@@ -58,6 +58,7 @@ def load_descriptions(filepath):
         return descriptions
     else:
         logging.error(f"Error in accessing YAML file {filepath}")
+        raise ValueError(f"No YAML file found for {file}")
 
 # Global variable to hold the parsed descriptions
 DESCRIPTIONS_DICT = load_descriptions('yamls/filing_history_descriptions.yml')
@@ -79,12 +80,15 @@ def create_interlock_network(entity_data):
     # Set nodes for the initial company, and the last visited one
     top_company_node = None
     last_entity_node = None
+
     # Empty set of nodes that have been created
     visited_nodes = set()
     # Now we loop over the entity data to display all companies
     for data in entity_data:
         # Make sure there is a dict
         if isinstance(data, dict):
+            
+            logging.info(f"Adding {data['company_name']} to network.")
             # Seperation of companies and entities
             company_node = data['etag']
             entity_node = data['etag']
@@ -96,30 +100,35 @@ def create_interlock_network(entity_data):
                 top_company_node = company_node
 
             # Both these conditions stop duplicate nodes
+            # tbh not needed now, but good to keep in for downstream when thats done
             if company_node not in visited_nodes:
                 G.add_node(company_node, 
-                           bipartite=0, 
-                           label=data['company_name'],
-                           number = data['company_id'],
-                           type='company',
-                           period_end=data['accounts']['last_accounts']['period_end_on'],
-                           previous_names=data['previous_names'], 
-                           link=data.get('link', ''))  # Using get to handle some companies without links
+                        bipartite=0, 
+                        label=data['company_name'],
+                        number = data['company_id'],
+                        type='company',
+                        period_end=data['accounts']['last_accounts']['period_end_on'],
+                        previous_names=data['previous_names'], 
+                        link=data.get('link', ''))  # Using get to handle some companies without links
                 visited_nodes.add(company_node)
 
             if entity_node not in visited_nodes:
                 G.add_node(entity_node, 
-                           bipartite=1, 
-                           label=data['name'], 
-                           type='entity', 
-                           link=data.get('link', ''))
+                        bipartite=1, 
+                        label=data['name'], 
+                        type='entity', 
+                        link=data.get('link', ''))
                 visited_nodes.add(entity_node)
 
+            
             # Set the last as the last
             if last_entity_node:
                 G.add_edge(last_entity_node, entity_node, nature_of_control=data['nature_of_control'])
             last_entity_node = entity_node
-    
+            
+        else:
+            logging.error("Node data is not a dict")
+            raise ValueError("Node data is not a dictionary.")
     # Sets top company as blue        
     if top_company_node:
         G.nodes[top_company_node]['color'] = 'blue'
@@ -178,13 +187,13 @@ def create_cytoscape_elements(graph, search_company):
         elements.append(edge_data)
     return elements
 
-def process_network_data(company_name, scraper, cache):
+def process_network_data(company_name, scraper_function, cache):
     """
     Processes the network data for a given company, utilizing a cache for efficiency.
 
     Inputs:
         company_name: The name of the company to retrieve data for.
-        scraper: The scraper function to fetch data for the company.
+        scraper_function: The scraper function to fetch data for the company.
         cache: A dictionary storing previously fetched company data.
 
     Outputs:
@@ -197,10 +206,15 @@ def process_network_data(company_name, scraper, cache):
         return cache[company_name]
         
 
-    data = scraper(company_name)
+    data = scraper_function(company_name)
+
     if data:
         logging.info(f"Cache store for company: {company_name}")
         cache[company_name] = data
+    else:
+        logging.info(f"No data found for {company_name}")
+        return data
+
     return data
 
 def calculate_network_metrics(graph):

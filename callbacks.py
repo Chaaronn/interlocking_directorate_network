@@ -51,24 +51,28 @@ def register_callbacks(app):
             
             # get the first company here to store the name
             # VERY VERY VERY BAD to do this, but to test doc downloader
-            first_result = scraper.search_ch(company_name)['items'][0]['title']
+            initial_search = scraper.search_ch(company_name)
+            first_result = initial_search['items'][0]['title']
+
+            logging.info(f"First company: {first_result}")
             # get the data
             directors_data = utils.process_network_data(first_result, scraper.get_company_tree, cache)
-            
-                    
+             
             if not directors_data:
                 # Provide all 5 outputs with appropriate placeholders
                 # This fixes issues where directors_data is empty
+                # This needs handling, as some display and others dont.
                 return (
-                    [],  # Empty elements for the network
+                    [initial_search],  # Empty elements for the network
                     f"No results found for company: {company_name}",  # Message
                     {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'},  # Message style
                     [{'label': name, 'value': name} for name in search_history],  # Dropdown options
                     []  # Empty analytics content
                 )
             
-
+            logging.info("Creating network.")
             network = utils.create_interlock_network(directors_data)
+            logging.info("Network created. Populating graph.")
             elements = utils.create_cytoscape_elements(network, company_name)
 
             # Calculate analytics
