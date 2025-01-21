@@ -123,8 +123,9 @@ def create_interlock_network(entity_data):
             
             # Set the last as the last
             if last_entity_node:
-                G.add_edge(last_entity_node, entity_node, nature_of_control=data['nature_of_control'])
+                G.add_edge(last_entity_node, entity_node, nature_of_control=data.get('nature_of_control', []))
             last_entity_node = entity_node
+
             
         else:
             logging.error("Node data is not a dict")
@@ -153,6 +154,7 @@ def create_cytoscape_elements(graph, search_company):
     search_company_normalised = normalise_company_name(search_company)
 
     # NODES
+    logging.info(f"All nodes: {graph.nodes()}")
     for node in graph.nodes():
         # Get the data for the node
         node_data = {
@@ -168,6 +170,8 @@ def create_cytoscape_elements(graph, search_company):
             node_classes.append('search-company')
         node_data['classes'] = ' '.join(node_classes)
         elements.append(node_data)
+
+
     
     # EDGES
     for edge in graph.edges(data=True):

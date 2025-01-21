@@ -57,7 +57,7 @@ def register_callbacks(app):
             logging.info(f"First company: {first_result}")
             # get the data
             directors_data = utils.process_network_data(first_result, scraper.get_company_tree, cache)
-             
+
             if not directors_data:
                 # Provide all 5 outputs with appropriate placeholders
                 # This fixes issues where directors_data is empty
@@ -73,6 +73,8 @@ def register_callbacks(app):
             logging.info("Creating network.")
             network = utils.create_interlock_network(directors_data)
             logging.info("Network created. Populating graph.")
+            for node, data in network.nodes(data=True):
+                logging.info(f"found {node}, with data: {data}")
             elements = utils.create_cytoscape_elements(network, company_name)
 
             # Calculate analytics
