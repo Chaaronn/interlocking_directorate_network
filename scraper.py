@@ -2,6 +2,7 @@ import requests, re, os, tempfile
 import logging, time
 from collections import deque
 import base64
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
 
@@ -92,7 +93,6 @@ def rate_limited_make_api_call(endpoint, params=None, method="GET"):
 
     # Now make the API call
     return make_api_call(endpoint, params=params, method=method)
-
 
 def search_ch(name):
     """
@@ -247,7 +247,6 @@ def get_company_profile(company_number):
 def get_company_registers(company_number):
     return rate_limited_make_api_call(f"company/{company_number}/registers")
 
-
 def get_document(document_metadata, method='GET'):
     """
     Retrieves and downloads a document from the Companies House API using document metadata.
@@ -349,6 +348,37 @@ def constuct_ch_link(company_number):
 
     new_url = f"find-and-update.company-information.service.gov.uk/company/{company_number}/"
     return new_url
+
+def get_addresses(csv_path):
+    
+    df = pd.read_csv(csv_path)
+
+    for index, row in df.iterrows():
+        company_name = row["company_name"]
+
+        ch_link = search_ch(company_name)
+        data = ch_link['items'][0]['address']
+        
+        
+        # Store results in the DataFrame
+        df.at[index, 'address_line_1'] = data.get('address_line_1', '')
+        df.at[index, 'address_line_2'] = data.get('address_line_2', '')
+        df.at[index, 'country'] = data.get('country', '')
+        df.at[index, 'postal_code'] = data.get('postal_code', '')
+        df.at[index, 'locality'] = data.get('locality', '')
+        df.at[index, 'region'] = data.get('region', '')
+    
+    df.to_csv(csv_path, index=False)
+    
+    # for now, work out how to store in csv after
+    # returns: {
+    # 'address_line_1': 'Suite 6 Mercer Manor Barns', 
+    # 'address_line_2': 'Sherington', 
+    # 'country': 'England', 
+    # 'postal_code': 'MK16 9PU', 
+    # 'locality': 'Newport Pagnell', 
+    # 'region': 'Buckinghamshire'}
+
 
 def get_company_tree(company_name):
     """
