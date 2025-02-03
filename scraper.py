@@ -350,35 +350,78 @@ def constuct_ch_link(company_number):
     return new_url
 
 def get_addresses(csv_path):
+    """
+    Reads a list of companies in a CSV, and returns their addresses in the same file
+    """
     
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path, dtype={
+    'company_number': str,
+    'company_name': str,
+    'full_address': str,
+    'address_line_1': str,
+    'address_line_2': str,
+    'country': str,
+    'postal_code': str,
+    'locality': str,
+    'region': str,
+    'previous_name' : str
+    })
+
+    # needed as csv is full and doesnt contain full address column
+    if 'full_address' not in df.columns:
+        df['full_address'] = ''  
 
     for index, row in df.iterrows():
-        company_name = row["company_name"]
+        company_number = row["company_number"]
+        company_number = str(company_number).strip()
 
-        ch_link = search_ch(company_name)
-        data = ch_link['items'][0]['address']
+        try:
+            data = get_company_profile(company_number)
+            address_data = data['registered_office_address']
+        except ValueError as e:
+            logging.warning(f"Company {company_number} not found: {e}")
+            data = []
+            address_data = []
+            continue
+        except Exception as e:
+            logging.error(f"Unexpected error for {company_number}: {e}")
+            continue
+
         
-        
+
+
         # Store results in the DataFrame
-        df.at[index, 'address_line_1'] = data.get('address_line_1', '')
-        df.at[index, 'address_line_2'] = data.get('address_line_2', '')
-        df.at[index, 'country'] = data.get('country', '')
-        df.at[index, 'postal_code'] = data.get('postal_code', '')
-        df.at[index, 'locality'] = data.get('locality', '')
-        df.at[index, 'region'] = data.get('region', '')
+        df.at[index, 'company_name'] = data.get('company_name', '')
+
+        # Should concat these into one line with commas
+        # and change csv to jsut "address"
+        full_address = ', '.join(filter(None, [
+            address_data.get('address_line_1', ''),
+            address_data.get('address_line_2', ''),
+            address_data.get('locality', ''),
+            address_data.get('region', ''),
+            address_data.get('postal_code', ''),
+            address_data.get('country', '')
+        ]))
+        
+        df.at[index, 'full_address'] = full_address
+        df.at[index, 'address_line_1'] = address_data.get('address_line_1', '')
+        df.at[index, 'address_line_2'] = address_data.get('address_line_2', '')
+        df.at[index, 'country'] = address_data.get('country', '')
+        df.at[index, 'postal_code'] = address_data.get('postal_code', '')
+        df.at[index, 'locality'] = address_data.get('locality', '')
+        df.at[index, 'region'] = address_data.get('region', '')
+
+
+        if 'previous_company_names' in data and data['previous_company_names']:
+            df.at[index, 'previous_name'] = data['previous_company_names'][0].get('name', '')
+        else:
+            df.at[index, 'previous_name'] = ''
     
     df.to_csv(csv_path, index=False)
-    
-    # for now, work out how to store in csv after
-    # returns: {
-    # 'address_line_1': 'Suite 6 Mercer Manor Barns', 
-    # 'address_line_2': 'Sherington', 
-    # 'country': 'England', 
-    # 'postal_code': 'MK16 9PU', 
-    # 'locality': 'Newport Pagnell', 
-    # 'region': 'Buckinghamshire'}
 
+get_addresses("companies.csv")
+print("complete")
 
 def get_company_tree(company_name):
     """
