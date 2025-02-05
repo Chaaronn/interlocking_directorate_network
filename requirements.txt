@@ -1,0 +1,9 @@
+dash
+dash-bootstrap-components
+dash-cytoscape
+flask
+networkx
+numpy
+pandas
+pyyaml
+requests
