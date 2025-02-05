@@ -9,4 +9,4 @@ networkx==3.3
 numpy==1.26.1
 pandas==2.2.1
 PyYAML==6.0.2
-requests==2.31.0
+requests==2.32.3
