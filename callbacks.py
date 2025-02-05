@@ -1,5 +1,6 @@
-from dash.dependencies import Input, Output, State
-from dash import html, no_update, dcc
+from dash.dependencies import Input, Output, State, ALL
+from dash import html, no_update, dcc, callback_context
+import dash_bootstrap_components as dbc
 import utils, scraper
 import logging, os
 from flask import send_file
@@ -22,80 +23,68 @@ def register_callbacks(app):
     Outputs:
         None.
     """
+
     @app.callback(
-    Output('cytoscape-network', 'elements'),
-    Output('message', 'children'),
-    Output('message', 'style'),
-    Output('search-history-dropdown', 'options'),
-    Output('collapse-analytics', 'children'),
-    [Input('submit-button', 'n_clicks')],
-    [State('input-company-name', 'value')]
+        Output('search-results-modal', 'is_open'),
+        Output('search-results-container', 'children'),
+        Output('cytoscape-network', 'elements'),
+        Output('message', 'children'),
+        Output('message', 'style'),
+        [Input('submit-button', 'n_clicks'), Input({'type': 'select-company', 'index': ALL}, 'n_clicks')],
+        [State('input-company-name', 'value')]
     )
-    def update_network(n_clicks, company_name):
+    def handle_search_and_selection(n_clicks_search, selected_company_n_clicks, company_name):
         """
-        Handles the search and updates the network visualization based on the company name input.
-
-        Inputs:
-            n_clicks: The number of times the submit button has been clicked.
-            company_name: The name of the company entered by the user.
-
-        Outputs:
-            elements: A list of Cytoscape elements to display in the network.
-            message: A message to show to the user (error or success).
-            message_style: A style dictionary for the message box.
-            options: The dropdown options for the search history.
-            analytics: A list of analytics (network metrics like total companies and edges).
+        Handles both the search results display and the selection of a company.
         """
-        if n_clicks > 0 and company_name:
-            logging.info(f"Search value: {company_name}")
+        ctx = callback_context
+
+        # If search button is clicked, show modal
+        if ctx.triggered and 'submit-button.n_clicks' in ctx.triggered[0]['prop_id']:
+            if n_clicks_search > 0 and company_name:
+                logging.info(f"Fetching search results for: {company_name}")
+                search_data = scraper.search_ch(company_name)
+
+                if not search_data or "items" not in search_data:
+                    return False, html.P("No results found."), [], "", {'display': 'none'}
+
+                global search_results
+                search_results = search_data["items"]
+
+                cards = []
+                for company in search_results:
+                    cards.append(
+                        dbc.Card(
+                            dbc.CardBody([
+                                html.H5(company.get("title", "Unknown Company"), className="card-title"),
+                                html.P(f"Address: {company.get('address_snippet', 'No address')}"),
+                                html.P(f"SIC Code: {company.get('company_type', 'N/A')}"),
+                                dbc.Button("Select", id={'type': 'select-company', 'index': company["company_number"]}, 
+                                           color="primary", size="sm")
+                            ]),
+                            style={"margin-bottom": "10px"}
+                        )
+                    )
+
+                return True, cards, [], "", {'display': 'none'}  # Open modal with search results
+
+        # If a company selection button is clicked, close modal and fetch network
+        elif ctx.triggered and 'select-company' in ctx.triggered[0]['prop_id']:
+  
+            selected_company_number = utils.get_ctx_index(ctx.triggered[0])
+
+            logging.info(f"Fetching data for selected company: {selected_company_number}")
             
-            # get the first company here to store the name
-            # VERY VERY VERY BAD to do this, but to test doc downloader
-            initial_search = scraper.search_ch(company_name)
-            first_result = initial_search['items'][0]['title']
+            company_tree = scraper.get_company_tree(selected_company_number)
 
-            logging.info(f"First company: {first_result}")
-            # get the data
-            directors_data = utils.process_network_data(first_result, scraper.get_company_tree, cache)
+            if not company_tree:
+                return False, [], [], f"No data found for {company_name}", {'padding': '20px', 'display': 'block'}
 
-            if not directors_data:
-                # Provide all 5 outputs with appropriate placeholders
-                # This fixes issues where directors_data is empty
-                # This needs handling, as some display and others dont.
-                return (
-                    [initial_search],  # Empty elements for the network
-                    f"No results found for company: {company_name}",  # Message
-                    {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'},  # Message style
-                    [{'label': name, 'value': name} for name in search_history],  # Dropdown options
-                    []  # Empty analytics content
-                )
-            
-            logging.info("Creating network.")
-            network = utils.create_interlock_network(directors_data)
-            logging.info("Network created. Populating graph.")
-            for node, data in network.nodes(data=True):
-                logging.info(f"found {node}, with data: {data}")
-            elements = utils.create_cytoscape_elements(network, company_name)
+            elements = utils.create_cytoscape_elements(utils.create_interlock_network(company_tree), company_name)
 
-            # Calculate analytics
-            metrics = utils.calculate_network_metrics(network)
-            analytics = [
-                html.H3("Network Analytics"),
-                html.P(f"Total Companies: {metrics['total_companies']}"),
-                html.P(f"Total Edges: {metrics['total_edges']}")
-            ]
+            return False, [], elements, "", {'display': 'none'}  # Close modal and show network
 
-
-            # Update search history
-            if company_name not in search_history:
-                search_history.append(company_name)
-            
-            # Create options for the dropdown
-            options = [{'label': name, 'value': name} for name in search_history]
-
-            return elements, "", {'display': 'none'}, options, analytics
-        
-        return [], "", {'display': 'none'}, [{'label': name, 'value': name} for name in search_history], []
+        return False, [], [], "", {'display': 'none'}
     
     # Searcxh history
     @app.callback(

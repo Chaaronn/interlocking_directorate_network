@@ -127,6 +127,21 @@ app.layout = html.Div(
                     ),
                     html.Div(id='message', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'}),
                     html.Div(id='dummy-output', style={'display': 'none'}),
+
+                    dbc.Modal(
+                        [
+                            dbc.ModalHeader(dbc.ModalTitle("Select a Company")),
+                            dbc.ModalBody(
+                                html.Div(id='search-results-container', style={'max-height': '400px', 'overflow-y': 'scroll'})
+                            ),
+                            dbc.ModalFooter(
+                                dbc.Button("Close", id="close-search-results", className="ml-auto")
+                            ),
+                        ],
+                        id='search-results-modal',
+                        is_open=False,
+                        size="lg"
+                    ),
                 ]),
 
                 # Right Panel

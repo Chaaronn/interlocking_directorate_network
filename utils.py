@@ -296,3 +296,10 @@ def get_document_options(document_list):
         options.append({"label": clean_yaml_description(display_text), "value": doc["links"]["document_metadata"]})
 
     return options
+
+def get_ctx_index(data):
+
+    match = re.search(r'"index":"(.*?)"', data['prop_id'])
+    index_value = match.group(1) if match else None
+
+    return index_value
