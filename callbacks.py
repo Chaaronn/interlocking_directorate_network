@@ -25,7 +25,7 @@ def register_callbacks(app):
     """
 
     @app.callback(
-        Output('search-results-modal', 'is_open'),
+        Output('search-results-collapse', 'is_open'),
         Output('search-results-container', 'children'),
         Output('cytoscape-network', 'elements'),
         Output('message', 'children'),
@@ -60,13 +60,13 @@ def register_callbacks(app):
                                 html.P(f"Address: {company.get('address_snippet', 'No address')}"),
                                 html.P(f"SIC Code: {company.get('company_type', 'N/A')}"),
                                 dbc.Button("Select", id={'type': 'select-company', 'index': company["company_number"]}, 
-                                           color="primary", size="sm")
+                                        color="primary", size="sm", className="mt-2")
                             ]),
-                            style={"margin-bottom": "10px"}
+                            style={"margin-bottom": "10px", "border": "1px solid #ddd", "border-radius": "8px"}
                         )
                     )
 
-                return True, cards, [], "", {'display': 'none'}  # Open modal with search results
+                return True, cards, [], "", {'display': 'none'}  # Open left panel with search results
 
         # If a company selection button is clicked, close modal and fetch network
         elif ctx.triggered and 'select-company' in ctx.triggered[0]['prop_id']:

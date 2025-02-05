@@ -94,6 +94,18 @@ input_section = html.Div(
     style={'margin': '20px'}
 )
 
+search_results_section = html.Div(
+                        [
+                            html.H3("Search Results"),
+                            dbc.Collapse(
+                                id="search-results-collapse",
+                                children=[html.Div(id='search-results-container')],
+                                is_open=False,
+                            )
+                        ],
+                        style={'margin-top': '20px', 'border': '1px solid #ccc', 'padding': '10px', 'border-radius': '8px'}
+                    )
+
 app.layout = html.Div(
     [
         # Main Flex Container
@@ -104,6 +116,8 @@ app.layout = html.Div(
                     
                     # Input section
                     input_section,
+
+                    search_results_section,
                     
                     search_history,
 
@@ -128,20 +142,7 @@ app.layout = html.Div(
                     html.Div(id='message', style={'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'none'}),
                     html.Div(id='dummy-output', style={'display': 'none'}),
 
-                    dbc.Modal(
-                        [
-                            dbc.ModalHeader(dbc.ModalTitle("Select a Company")),
-                            dbc.ModalBody(
-                                html.Div(id='search-results-container', style={'max-height': '400px', 'overflow-y': 'scroll'})
-                            ),
-                            dbc.ModalFooter(
-                                dbc.Button("Close", id="close-search-results", className="ml-auto")
-                            ),
-                        ],
-                        id='search-results-modal',
-                        is_open=False,
-                        size="lg"
-                    ),
+                    
                 ]),
 
                 # Right Panel
@@ -163,6 +164,9 @@ app.layout = html.Div(
             ],
             id="main-flex-container",
         ),
+
+        
+
     ]
 )
 

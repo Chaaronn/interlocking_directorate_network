@@ -63,17 +63,52 @@ h1 {
     margin-top: 20px;
 }
 
-/* Left Panel */
+/* Ensure left panel is scrollable */
 #left-panel {
     width: 20%;
-    height: 90%;
+    height: 90vh;
     flex: 1;
     padding: 20px;
     border: 1px solid #ccc;
     background-color: #fff;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    overflow-y: auto; /* Allow scrolling */
 }
+
+/* Style the search results container */
+#search-results-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 50vh; /* Prevent it from pushing other elements */
+    overflow-y: auto;
+    padding: 10px;
+}
+
+/* Style for individual cards */
+.card-title {
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.card-text {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+/* Style search result buttons */
+button[type="button"] {
+    padding: 8px 15px;
+    font-size: 0.9rem;
+    border-radius: 5px;
+}
+
+/* Ensure smooth animations for collapsible search results */
+#search-results-collapse {
+    transition: max-height 0.3s ease-in-out;
+}
+
 
 /* Center Panel */
 #center-panel {
