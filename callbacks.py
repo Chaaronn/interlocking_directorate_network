@@ -163,7 +163,6 @@ def register_cytoscape_callbacks(app):
             details = [
                 html.H4("Company Details"),
                 html.P(f"Name: {node_data.get('label')}"),
-                html.P(f"ID: {node_data.get('id')}"),
                 html.P([
                     "Link: ",
                     html.A(f"{link}", href=f'https://{link}', target="_blank")

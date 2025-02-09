@@ -90,49 +90,43 @@ def create_interlock_network(entity_data):
             
             logging.info(f"Adding {data['company_name']} to network.")
             # Seperation of companies and entities
-            company_node = data['etag']
-            entity_node = data['etag']
-            
+            company_node = data['company_name']
+
             # If the current is first, it is the top company
             if top_company_node:
                 pass
             else:
                 top_company_node = company_node
 
-            # Both these conditions stop duplicate nodes
-            # tbh not needed now, but good to keep in for downstream when thats done
-            if company_node not in visited_nodes:
-                G.add_node(company_node, 
-                        bipartite=0, 
-                        label=data['company_name'],
-                        number = data['company_id'],
-                        type='company',
-                        period_end=data['accounts']['last_accounts']['period_end_on'],
-                        previous_names=data['previous_names'], 
-                        link=data.get('link', ''))  # Using get to handle some companies without links
-                visited_nodes.add(company_node)
 
-            if entity_node not in visited_nodes:
-                G.add_node(entity_node, 
-                        bipartite=1, 
-                        label=data['name'], 
-                        type='entity', 
-                        link=data.get('link', ''))
-                visited_nodes.add(entity_node)
+            logging.info(f'Adding node {data['company_name']}')
+            G.add_node(company_node, 
+                    bipartite=0, 
+                    label=data['company_name'],
+                    number = data['company_id'],
+                    type='company',
+                    period_end=data['accounts']['last_accounts']['period_end_on'],
+                    previous_names=data['previous_names'], 
+                    link=data.get('link', ''))  # Using get to handle some companies without links
+            visited_nodes.add(company_node)
 
             
             # Set the last as the last
             if last_entity_node:
-                G.add_edge(last_entity_node, entity_node, nature_of_control=data.get('nature_of_control', []))
-            last_entity_node = entity_node
+                G.add_edge(last_entity_node, company_node, nature_of_control=data.get('nature_of_control', []))
+                logging.info(f'Last entity is {data['company_name']}')
+            last_entity_node = company_node
 
             
         else:
             logging.error("Node data is not a dict")
             raise ValueError("Node data is not a dictionary.")
+        
     # Sets top company as blue        
     if top_company_node:
         G.nodes[top_company_node]['color'] = 'blue'
+    
+    logging.info(f'All nodes in create_interlock_network are {G.nodes()}')
     return G
 
 # Create the elements to fill the graph
