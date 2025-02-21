@@ -105,7 +105,6 @@ def create_interlock_network(entity_data):
                     label=data['company_name'],
                     number = data['company_id'],
                     type='company',
-                    period_end=data['accounts']['last_accounts']['period_end_on'],
                     previous_names=data['previous_names'], 
                     link=data.get('link', ''))  # Using get to handle some companies without links
             visited_nodes.add(company_node)
