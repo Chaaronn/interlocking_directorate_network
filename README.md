@@ -7,3 +7,7 @@ This Python project uses the [Companies House API](https://developer.company-inf
 ## Features
 
 ---
+
+## TODO
+
+Reverse search from top node down - will be difficult with US owners I think
