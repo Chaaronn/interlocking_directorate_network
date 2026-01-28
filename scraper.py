@@ -1,4 +1,4 @@
-import requests, re, os, tempfile
+import requests, os, tempfile
 import logging, time
 from collections import deque
 import base64
@@ -419,9 +419,6 @@ def get_addresses(csv_path):
             df.at[index, 'previous_name'] = ''
     
     df.to_csv(csv_path, index=False)
-
-'''get_addresses("companies.csv")
-print("complete")'''
 
 def get_company_tree(company_name):
     """
