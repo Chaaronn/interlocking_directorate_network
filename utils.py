@@ -1,6 +1,6 @@
 import re, logging, yaml
 import networkx as nx
-from scraper import get_filling_history
+from scraper import get_filing_history
 
 # Helper to normalise names
 def normalise_company_name(name):
@@ -79,53 +79,62 @@ def create_interlock_network(entity_data):
     G = nx.Graph()
     # Set nodes for the initial company, and the last visited one
     top_company_node = None
-    last_entity_node = None
+    root_company_node = None
 
     # Empty set of nodes that have been created
     visited_nodes = set()
+    
     # Now we loop over the entity data to display all companies
-    for data in entity_data:
+    for idx, data in enumerate(entity_data):
         # Make sure there is a dict
-        if isinstance(data, dict):
-            
-            logging.info(f"Adding {data['company_name']} to network.")
-            # Seperation of companies and entities
-            company_node = data['company_name']
-
-            # If the current is first, it is the top company
-            if top_company_node:
-                pass
-            else:
-                top_company_node = company_node
-
-
-            logging.info(f'Adding node {data['company_name']}')
-            G.add_node(company_node, 
-                    bipartite=0, 
-                    label=data['company_name'],
-                    number = data['company_id'],
-                    type='company',
-                    previous_names=data['previous_names'], 
-                    link=data.get('link', ''))  # Using get to handle some companies without links
-            visited_nodes.add(company_node)
-
-            
-            # Set the last as the last
-            if last_entity_node:
-                G.add_edge(last_entity_node, company_node, nature_of_control=data.get('nature_of_control', []))
-                logging.info(f'Last entity is {data['company_name']}')
-            last_entity_node = company_node
-
-            
-        else:
+        if not isinstance(data, dict):
             logging.error("Node data is not a dict")
             raise ValueError("Node data is not a dictionary.")
+        
+        logging.info(f"Adding {data['company_name']} to network.")
+        company_node = data['company_name']
+
+        # Identify the root company (first item or item with kind='root')
+        if root_company_node is None:
+            if data.get('kind') == 'root' or idx == 0:
+                root_company_node = company_node
+                top_company_node = company_node
+                logging.info(f'Root company identified: {company_node}')
+
+        # Add node to graph
+        logging.info(f'Adding node {data['company_name']}')
+        G.add_node(company_node, 
+                bipartite=0, 
+                label=data['company_name'],
+                number=data['company_id'],
+                type='company',
+                previous_names=data['previous_names'], 
+                link=data.get('link', ''),
+                period_end=data.get('accounts', {}).get('last_accounts', {}).get('period_end_on', ''))
+        visited_nodes.add(company_node)
+
+        # Create edges: connect to root if this is a direct controller of root
+        # Otherwise, connect to previous node (creating a chain structure)
+        if root_company_node and company_node != root_company_node:
+            # If this is likely a direct controller of root (comes right after root in list)
+            # and has nature_of_control, connect it to root
+            if idx == 1 and data.get('nature_of_control'):
+                G.add_edge(root_company_node, company_node, nature_of_control=data.get('nature_of_control', []))
+                logging.info(f'Connected root {root_company_node} to controller {company_node}')
+            else:
+                # For other nodes, connect to previous node to maintain chain structure
+                if idx > 0:
+                    prev_node = entity_data[idx - 1]['company_name']
+                    if prev_node != company_node:  # Avoid self-loops
+                        G.add_edge(prev_node, company_node, nature_of_control=data.get('nature_of_control', []))
+                        logging.info(f'Connected {prev_node} to {company_node}')
         
     # Sets top company as blue        
     if top_company_node:
         G.nodes[top_company_node]['color'] = 'blue'
     
-    logging.info(f'All nodes in create_interlock_network are {G.nodes()}')
+    logging.info(f'All nodes in create_interlock_network are {list(G.nodes())}')
+    logging.info(f'All edges in create_interlock_network are {list(G.edges())}')
     return G
 
 # Create the elements to fill the graph
@@ -248,23 +257,35 @@ def fetch_document_records(company_name, cache, company_number):
         company_number: The unique identifier of the company for external scraping.
 
     Outputs:
-        filing_history: A list of filing history records for the company.
+        dict: A dictionary containing filing history with 'items' key, or empty dict if not found.
     """
-
+    # Check cache - cache stores company tree data, which includes filing_history
     if company_name in cache:
         logging.info(f"Cache hit for {company_name}")
-        hit = cache[company_name]
-        filing_history = hit[0].get('filing_history', [])
-
-        if not filing_history:
-            logging.warning(f"No filing history found for {company_name}")
-        return filing_history
-    else:
-        logging.info(f"No cache hit for {company_name} when fetching records")
-        logging.info(f"Searching filiing for number {company_number}")
-        filing_history = get_filling_history(company_number)
-
-        return filing_history
+        cached_data = cache[company_name]
+        # Cache stores list of entity dicts, first one is usually the root company
+        if isinstance(cached_data, list) and len(cached_data) > 0:
+            filing_history = cached_data[0].get('filing_history', {})
+            if filing_history and 'items' in filing_history:
+                return filing_history
+            else:
+                logging.warning(f"No filing history in cache for {company_name}")
+        else:
+            logging.warning(f"Unexpected cache format for {company_name}")
+    
+    # Not in cache or cache doesn't have filing history, fetch it
+    if not company_number:
+        logging.warning(f"No company number provided for {company_name}, cannot fetch filing history")
+        return {}
+    
+    logging.info(f"No cache hit for {company_name} when fetching records")
+    logging.info(f"Searching filing history for number {company_number}")
+    try:
+        filing_history = get_filing_history(company_number)
+        return filing_history if filing_history else {}
+    except Exception as e:
+        logging.error(f"Error fetching filing history for {company_number}: {e}")
+        return {}
     
 def get_document_options(document_list):
     """

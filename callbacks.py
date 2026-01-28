@@ -73,20 +73,36 @@ def register_callbacks(app):
   
             selected_company_number = utils.get_ctx_index(ctx.triggered[0])
 
-            logging.info(f"Fetching data for selected company: {selected_company_number}")
+            # Find the selected company from search results to get its name
+            selected_company_name = None
+            if 'search_results' in globals():
+                for company in search_results:
+                    if company.get('company_number') == selected_company_number:
+                        selected_company_name = company.get('title', selected_company_number)
+                        break
             
-            company_tree = scraper.get_company_tree(selected_company_number)
+            # If not found in search results, use company number as fallback
+            if not selected_company_name:
+                selected_company_name = selected_company_number
+
+            logging.info(f"Fetching data for selected company: {selected_company_name} (number: {selected_company_number})")
+            
+            try:
+                company_tree = scraper.get_company_tree(selected_company_name)
+            except Exception as e:
+                logging.error(f"Error fetching company tree for {selected_company_name}: {e}")
+                return False, [], [], f"Error fetching data for {selected_company_name}: {str(e)}", {'padding': '20px', 'display': 'block'}
 
             if not company_tree:
-                return False, [], [], f"No data found for {company_name}", {'padding': '20px', 'display': 'block'}
+                return False, [], [], f"No data found for {selected_company_name}", {'padding': '20px', 'display': 'block'}
 
-            elements = utils.create_cytoscape_elements(utils.create_interlock_network(company_tree), company_name)
+            elements = utils.create_cytoscape_elements(utils.create_interlock_network(company_tree), selected_company_name)
 
             return False, [], elements, "", {'display': 'none'}  # Close modal and show network
 
         return False, [], [], "", {'display': 'none'}
     
-    # Searcxh history
+    # Search history
     @app.callback(
         Output('input-company-name', 'value'),
         [Input('search-history-dropdown', 'value')]
@@ -192,18 +208,16 @@ def register_cytoscape_callbacks(app):
 
             
             # Document search 
-            # Needs to be updated somewhere to get filiing history on node tap, populate download that way
-            data = utils.fetch_document_records(company_name=node_data.get('label'), cache=cache, company_number=node_data.get('number'))
+            # Fetch filing history on node tap, populate download that way
+            node_company_name = node_data.get('label', 'Unknown')
+            node_company_number = node_data.get('number', '')
+            data = utils.fetch_document_records(company_name=node_company_name, cache=cache, company_number=node_company_number)
             if not data or 'items' not in data:
-                logging.error(f"Documents list empty for {company_name}")
-                return []
-
-            document_list = data['items']
-
-            # logging.info(f"Fetched documents for {node_data.get('label')}: {data}")
-
-            options = utils.get_document_options(document_list)
-
+                logging.warning(f"Documents list empty for {node_company_name}")
+                options = []
+            else:
+                document_list = data['items']
+                options = utils.get_document_options(document_list)
 
             return details, {'padding': '20px', 'border': '1px solid #ccc', 'margin-top': '20px', 'display': 'block'}, options    
         return "", {'display': 'none'}, []
@@ -295,21 +309,3 @@ def register_cytoscape_callbacks(app):
                     logging.info(f"Cleaned up temporary file: {file_path}")
                 except Exception as cleanup_error:
                     logging.warning(f"Failed to clean up temporary file {file_path}: {cleanup_error}")
-
-
-
-
-'''
-# Rest button
-@app.callback(
-    Output('cytoscape-network', 'zoom'),
-    Output('cytoscape-network', 'elements'),
-    Output('cytoscape-network', 'layout'),
-    [Input('reset-button', 'n_clicks')],
-    [State('cytoscape-network', 'elements')]
-)
-def reset_view(n_clicks, elements, layout):
-    if n_clicks > 0:
-        return 1.0, elements, {'name': layout}
-    return dash.no_update, dash.no_update, dash.no_update
-'''

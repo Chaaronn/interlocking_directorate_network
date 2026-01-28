@@ -3,6 +3,7 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc
 import dash_cytoscape as cyto
 import logging
+import os
 from callbacks import register_callbacks, register_cytoscape_callbacks
 
 app = dash.Dash(__name__)

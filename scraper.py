@@ -14,8 +14,16 @@ logging.basicConfig(level=logging.INFO)
 api_key = os.getenv('API_KEY')
 ch_base_url = 'https://api.company-information.service.gov.uk/'
 
+# Validate API key at module load
+if not api_key:
+    logging.warning("API_KEY environment variable not set. API calls will fail.")
+
 session = requests.Session()
-session.auth= (api_key, "")
+# Use proper Basic auth format: base64("api_key:")
+if api_key:
+    credentials = f"{api_key}:"
+    encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+    session.headers.update({"Authorization": f"Basic {encoded_credentials}"})
 
 # Global list to store request timestamps
 request_timestamps = deque()
@@ -43,13 +51,12 @@ def make_api_call(endpoint, params=None, method="GET"):
         ValueError: If the resource is not found (404).
     """
 
-    headers = {"Authorization": f"Basic {api_key}"}
-    
+    # Use session auth (already set up with proper Basic auth)
     url = ch_base_url + endpoint
 
     try:
         if method == "GET":
-            r = session.get(url, headers=headers, params=params, timeout=30)
+            r = session.get(url, params=params, timeout=30)
         else:
             raise NotImplementedError(f"HTTP method {method} not supported.")
 
@@ -189,7 +196,7 @@ def adv_search_ch(name_includes, name_excludes='', company_status='', company_su
         "sic_codes": ",".join(sic_codes)  # Convert list to comma-separated string
     }
 
-    return rate_limited_make_api_call("advanced-search/companies", params={"q" : params})
+    return rate_limited_make_api_call("advanced-search/companies", params=params)
 
 def get_persons_with_control_info(company_link):
     """
@@ -220,7 +227,7 @@ def get_entity_information(self_link):
     """
     return rate_limited_make_api_call(self_link)
 
-def get_filling_history(company_number):
+def get_filing_history(company_number):
     """
     Retrieves the filing history of a company using its company number.
 
@@ -263,11 +270,12 @@ def get_document(document_metadata, method='GET'):
         ValueError: If the document retrieval fails.
     """
     
-    # This needs a rework of the make_api_call and rate_limited but this is fine for testing
-    # Also, lookup rate limit for this
-    encoded_key = base64.b64encode(api_key.encode('utf-8')).decode('utf-8')
-    
-    headers = {"Authorization": f"Basic {encoded_key}"}
+    # Use proper Basic auth format: base64("api_key:")
+    if not api_key:
+        raise ValueError("API_KEY environment variable not set. Cannot download document.")
+    credentials = f"{api_key}:"
+    encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+    headers = {"Authorization": f"Basic {encoded_credentials}"}
     
     url = f"{document_metadata}/content"
 
@@ -335,7 +343,7 @@ def get_active_sig_persons_from_name(company_name):
 
     return active_sig_persons
 
-def constuct_ch_link(company_number):
+def construct_ch_link(company_number):
     """
     Constructs the Companies House link for a company using its company number.
 
@@ -377,18 +385,13 @@ def get_addresses(csv_path):
 
         try:
             data = get_company_profile(company_number)
-            address_data = data['registered_office_address']
+            address_data = data.get('registered_office_address', {})
         except ValueError as e:
             logging.warning(f"Company {company_number} not found: {e}")
-            data = []
-            address_data = []
             continue
         except Exception as e:
             logging.error(f"Unexpected error for {company_number}: {e}")
             continue
-
-        
-
 
         # Store results in the DataFrame
         df.at[index, 'company_name'] = data.get('company_name', '')
@@ -456,19 +459,20 @@ def get_company_tree(company_name):
     
     def process_entity(entity, company_info):
         """Process and structure information for a single significant control entity."""
+        try:
+            company_profile = get_company_profile(company_info['company_number'])
+        except Exception as e:
+            logging.error(f"Failed to get company profile for {company_info.get('title', 'Unknown')}: {e}")
+            company_profile = {}
 
-        company_profile = get_company_profile(company_info['company_number'])
-
-        if not company_profile:
-            logging.error(f"No company profile found for {company_info['title']}")
-
-
-        filling_history = get_filling_history(company_info['company_number']) # maybe need to add handling of no history
-        if not filling_history:
-            logging.info(f"Filing history not found for: {company_info['title']}")
+        filing_history = {}
+        try:
+            filing_history = get_filing_history(company_info['company_number'])
+        except Exception as e:
+            logging.info(f"Filing history not found for: {company_info.get('title', 'Unknown')}: {e}")
 
         accounts = company_profile.get('accounts', {}) if company_profile else {}
-        previous_names = company_profile.get("previous_company_names", {}) if company_profile else {}
+        previous_names = company_profile.get("previous_company_names", []) if company_profile else []
 
         return {
             'company_id': company_info['company_number'],
@@ -476,15 +480,27 @@ def get_company_tree(company_name):
             'etag': entity.get('etag', f"default-{company_info['company_number']}"),
             'name': entity.get('name', 'No name found'),
             'nature_of_control': entity.get('natures_of_control', ['has_significant_control']),
-            'link': constuct_ch_link(company_info['company_number']),
+            'link': construct_ch_link(company_info['company_number']),
             'kind': entity.get('kind', 'No kind found'),
             'notified_on': entity.get('notified_on', 'No data found'),
             'locality': entity.get('address', {}).get('locality', 'No locality found'),
             'accounts': accounts,
-            'previous_names' : previous_names,
-            'filing_history' : filling_history
+            'previous_names': previous_names,
+            'filing_history': filing_history
         }
     
+    def is_uk_country(country_str):
+        """Check if a country string represents a UK country."""
+        if not country_str:
+            return False
+        country_lower = country_str.lower()
+        uk_variations = [
+            'united kingdom', 'uk', 'england', 'wales', 'scotland', 
+            'northern ireland', 'england and wales', 'great britain',
+            'gb', 'britain'
+        ]
+        return any(uk_var in country_lower for uk_var in uk_variations)
+
     def traverse_entities(entities, root_company_info, entity_data=None):
         """Traverse through entities recursively to build the tree."""
 
@@ -504,36 +520,50 @@ def get_company_tree(company_name):
             for entity in current_entities:
                 logging.info(f"Processing entity: {entity.get('name', 'Unknown')} of kind: {entity.get('kind', 'Unknown')}")
 
-                if not entity.get('ceased') and entity['kind'] == 'corporate-entity-person-with-significant-control' and entity['address']['country'].lower() == 'united kingdom': # As we only care about companies, not individuals
+                # Safely check address and country
+                entity_address = entity.get('address', {})
+                entity_country = entity_address.get('country', '').lower() if entity_address else ''
+
+                if not entity.get('ceased') and entity.get('kind') == 'corporate-entity-person-with-significant-control' and is_uk_country(entity_country): # As we only care about companies, not individuals
                     
                     logging.info(f"Entity {entity.get('name', 'Unknown')} added as kind corporate-entity-person-with-significant-control")
                     
-                    if entity['etag'] not in visited_entities:
+                    if entity.get('etag') and entity['etag'] not in visited_entities:
                         visited_entities.add(entity['etag'])
-                        structured_data = process_entity(entity, current_company_info)
-                        entity_data.append(structured_data)
-
-                        for data in entity_data:
-                            logging.info(f"{data['name']} added to list.")
-
-                        # Fetch the next level of significant controllers
-                        other_company_name = entity['name']
-                        other_company_info, other_controllers = fetch_significant_controllers(other_company_name)
+                        
+                        # First, fetch the company info for this entity (not the current company being controlled)
+                        other_company_name = entity.get('name', '')
+                        if not other_company_name:
+                            logging.warning(f"Entity has no name, skipping")
+                            continue
+                        
+                        try:
+                            other_company_info, other_controllers = fetch_significant_controllers(other_company_name)
+                        except Exception as e:
+                            logging.error(f"Failed to fetch significant controllers for {other_company_name}: {e}")
+                            other_company_info, other_controllers = None, None
 
                         if other_company_info:
-
-                            country_registered = other_company_info.get('identification', {}).get('country_registered', '').lower()
-    
-                            if country_registered and country_registered != 'united kingdom':
-                                logging.info(f"Skippin for non-UK company: {other_company_info['title']} registered in {country_registered}")
+                            country_registered = other_company_info.get('identification', {}).get('country_registered', '')
+                            
+                            # Check if company is UK-registered (using expanded UK check)
+                            if country_registered and not is_uk_country(country_registered):
+                                logging.info(f"Skipping for non-UK company: {other_company_info['title']} registered in {country_registered}")
                                 continue
+                            
+                            # Now process the entity using the correct company_info (the entity's own company info)
+                            structured_data = process_entity(entity, other_company_info)
+                            entity_data.append(structured_data)
+                            logging.info(f"{structured_data['company_name']} added to list.")
+
+                            # ALWAYS traverse its controllers if any, regardless of address country
+                            # This ensures we go up the full chain
                             if other_controllers:
+                                logging.info(f"Traversing controllers for {structured_data['company_name']}")
                                 traverse_entities(other_controllers, other_company_info, entity_data)
-                            else: 
-                                structured_data = process_entity(other_company_info, other_company_info)
-                                entity_data.append(structured_data)
+                            # If no controllers, the entity is already added above, so we're done
                         else:
-                            logging.warning(f"Entity {entity['name']} not being traversed due to no controllers or info")
+                            logging.warning(f"Entity {entity.get('name', 'Unknown')} not being traversed due to no company info found")
                 
                 elif entity.get('kind') == 'individual-beneficial-owner':
                     logging.info(f"Skipping for individual beneficial owner: {entity.get('name', 'Unknown')}")
@@ -542,35 +572,52 @@ def get_company_tree(company_name):
 
                     continue
 
-                # Handling non-UK owners
-                elif not entity.get('ceased') and entity['address']['country'].lower() != 'united kingdom':
-                    # This is causing the last node to not be displayed for some reason
-                    logging.info(f"Skipping for non-UK entity: {entity.get('name', 'Unknown')} in {entity['address']['country']}")
-
-
-                    if entity['etag'] not in visited_entities:
-
-                        visited_entities.add(entity['etag'])
-                        structured_data = process_entity(entity, root_company_info)
-                        entity_data.append(structured_data)
+                # Handling entities with non-UK addresses but might be UK-registered
+                # We still want to check if they're UK-registered and traverse their controllers
+                elif not entity.get('ceased') and entity.get('kind') == 'corporate-entity-person-with-significant-control' and entity_country and not is_uk_country(entity_country):
+                    logging.info(f"Processing entity with non-UK address: {entity.get('name', 'Unknown')} in {entity_country}")
+                    
+                    # Still try to fetch company info - it might be UK-registered even if address is elsewhere
+                    other_company_name = entity.get('name', '')
+                    if other_company_name and entity.get('etag') and entity['etag'] not in visited_entities:
                         visited_entities.add(entity['etag'])
                         
-                        entity_data.append(
-                            {
-                        'company_id': entity.get('etag', 'Unknown'),     # Must use etag as no number on CH
-                        'company_name': entity.get('name', 'Unknown'),
-                        'etag': entity.get('etag', 'Unknown'),
-                        'nature_of_control': entity['natures_of_control'],
-                        'link': [],  # We dont have this, they dont have a page if non-UK
-                        'kind': entity.get('kind', 'Unknown'),
-                        'notified_on': entity.get('notified_on', 'No data found'),
-                        'locality': entity['address']['locality'],
-                        'accounts': {'last_accounts' : {'period_end_on' : 'NA'}},   # We dont have this info from CH
-                        'previous_names': [],   # We dont have this
-                        'filing_history' : [] # We al;so dont have
-                        }
-                        )
-
+                        try:
+                            other_company_info, other_controllers = fetch_significant_controllers(other_company_name)
+                        except Exception as e:
+                            logging.error(f"Failed to fetch company info for {other_company_name}: {e}")
+                            other_company_info, other_controllers = None, None
+                        
+                        if other_company_info:
+                            country_registered = other_company_info.get('identification', {}).get('country_registered', '')
+                            
+                            # If UK-registered, process normally and traverse controllers
+                            if is_uk_country(country_registered):
+                                logging.info(f"Entity {other_company_name} is UK-registered, processing normally")
+                                structured_data = process_entity(entity, other_company_info)
+                                entity_data.append(structured_data)
+                                logging.info(f"{structured_data['company_name']} added to list.")
+                                
+                                # Traverse controllers
+                                if other_controllers:
+                                    logging.info(f"Traversing controllers for {structured_data['company_name']}")
+                                    traverse_entities(other_controllers, other_company_info, entity_data)
+                                continue
+                        
+                        # If not UK-registered or no company info, add as non-UK entity
+                        entity_data.append({
+                            'company_id': entity.get('etag', 'Unknown'),
+                            'company_name': entity.get('name', 'Unknown'),
+                            'etag': entity.get('etag', 'Unknown'),
+                            'nature_of_control': entity.get('natures_of_control', []),
+                            'link': '',
+                            'kind': entity.get('kind', 'Unknown'),
+                            'notified_on': entity.get('notified_on', 'No data found'),
+                            'locality': entity_address.get('locality', 'No locality found'),
+                            'accounts': {'last_accounts': {'period_end_on': 'NA'}},
+                            'previous_names': [],
+                            'filing_history': []
+                        })
                     continue
 
                 # Handling non-companies             
@@ -593,19 +640,63 @@ def get_company_tree(company_name):
         'company_name': root_company_info.get('title', company_name),
         'etag': root_company_info.get('etag', 'Unknown'),
         'nature_of_control': [],
-        'link': constuct_ch_link(root_company_info.get('company_number', 'Unknown')),
+        'link': construct_ch_link(root_company_info.get('company_number', 'Unknown')),
         'kind': 'root',
         'notified_on': 'N/A',
         'locality': root_company_info.get('address_snippet', 'Unknown'),
-        'accounts': {'last_accounts' : {'period_end_on' : 'NA'}},
+        'accounts': {'last_accounts': {'period_end_on': 'NA'}},
         'previous_names': root_company_info.get('previous_company_names', []),
-        'filing_history' : get_filling_history(root_company_info.get('company_number', 'Unknown'))
+        'filing_history': get_filing_history(root_company_info.get('company_number', 'Unknown')) if root_company_info.get('company_number') else {}
         }] if root_company_info else []
 
     visited_entities = set()
 
-    # Traverse
+    # Traverse to get all entities
     entity_data = traverse_entities(root_controllers, root_company_info)
+
+    # Add the root company itself to the beginning of the entity_data list
+    # This ensures the base company is always included in the graph
+    if root_company_info:
+        # Check if root company is already in entity_data (shouldn't happen, but safety check)
+        root_company_number = root_company_info.get('company_number', '')
+        root_already_added = any(
+            entity.get('company_id') == root_company_number or 
+            entity.get('company_name') == root_company_info.get('title', '')
+            for entity in entity_data
+        )
+        
+        if not root_already_added:
+            try:
+                root_company_profile = get_company_profile(root_company_number)
+            except Exception as e:
+                logging.warning(f"Failed to get company profile for root company {root_company_info.get('title', 'Unknown')}: {e}")
+                root_company_profile = {}
+            
+            try:
+                root_filing_history = get_filing_history(root_company_number)
+            except Exception as e:
+                logging.info(f"Filing history not found for root company {root_company_info.get('title', 'Unknown')}: {e}")
+                root_filing_history = {}
+            
+            root_entity = {
+                'company_id': root_company_number,
+                'company_name': root_company_info.get('title', company_name),
+                'etag': root_company_info.get('etag', f"root-{root_company_number}"),
+                'name': root_company_info.get('title', company_name),
+                'nature_of_control': [],
+                'link': construct_ch_link(root_company_number),
+                'kind': 'root',
+                'notified_on': 'N/A',
+                'locality': root_company_info.get('address_snippet', 'Unknown'),
+                'accounts': root_company_profile.get('accounts', {}) if root_company_profile else {},
+                'previous_names': root_company_profile.get('previous_company_names', []) if root_company_profile else [],
+                'filing_history': root_filing_history
+            }
+            # Insert at the beginning so root company appears first
+            entity_data.insert(0, root_entity)
+            logging.info(f"Added root company {root_company_info.get('title', company_name)} to entity data")
+        else:
+            logging.info(f"Root company {root_company_info.get('title', company_name)} already in entity_data, skipping duplicate")
 
     for entity in entity_data:
         logging.info(f"Entity: {entity['company_name']} found in scraper.")
